@@ -1,0 +1,51 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.163.1/containers/python-3-postgres
+// Update the VARIANT arg in docker-compose.yml to pick a Python version: 3, 3.8, 3.7, 3.6 
+{
+	"name": "Rapids Dask PyTorch Ubi8 Dev",
+
+	"initializeCommand": "cp pytorch-quik/requirements.txt .devcontainer/requirements/r1.txt && cp solution-prediction-train/requirements.txt .devcontainer/requirements/r2.txt"
+	,
+
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"python.linting.enabled": true,
+		"python.linting.pylintEnabled": false,
+		"python.linting.flake8Enabled": true,
+		"python.formatting.blackPath": "/opt/conda/envs/rdp/bin/black",
+		"python.defaultInterpreterPath": "/opt/conda/envs/rdp/bin/python",
+		"python.pythonPath": "/opt/conda/envs/rdp/bin/python",
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"ms-python.python",
+		"mtxr.sqltools",
+		"mtxr.sqltools-driver-pg",
+		"redhat.vscode-yaml",
+		"njpwerner.autodocstring"
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [5000, 5432],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "pip install --user -r requirements.txt",
+
+	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	// "remoteUser": "vscode"
+	"containerEnv": {
+		"BASEDIR": "/workspaces/pqsp",
+		"DEVDIR": "/workspaces/pqsp/.devcontainer",
+		"PIP_CONFIG_FILE": "/workspaces/pqsp/.devcontainer/pip.conf",
+		"IPYTHONDIR": "/workspaces/pqsp/.ipythondir",
+		"TRUSTED_DOCKER": "True",
+	},
+
+	"postCreateCommand": "bash -i /workspaces/pqsp/.devcontainer/post-create-scripts/deventry.sh"
+}
