@@ -1,3 +1,3 @@
-# pnt_torch
+# pytorch-quik
 
-Helper utilities for PnT Analytics to use PyTorch
+Functions to make working in pytorch quik-er

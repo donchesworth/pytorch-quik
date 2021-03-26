@@ -1,0 +1,11 @@
+.DS_Store**
+.domino**
+domino**
+.*.cfg
+.ipynb_checkpoints*
+__pycache__*
+.python-version
+.vscode**
+archive**
+.idea**
+.code-workspace**
