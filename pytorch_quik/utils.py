@@ -51,7 +51,7 @@ def id_str(
     Returns:
         str: full filename for output object
     """
-    lbls = "".join(getattr(args, "labels", ""))
+    lbls = "".join(map(str, getattr(args, "labels", "")))
     if ftype == "state_dict":
         epoch = "e" + str(epoch)
     elif ftype == "preds":
