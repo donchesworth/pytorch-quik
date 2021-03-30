@@ -1,4 +1,4 @@
-FROM quay.io/donchesworth/rapids-dask-pytortch:py38-cuda10.2-rapids0.18-pytorch1.7-ubi8
+FROM quay.io/donchesworth/rapids-dask-pytorch:py38-cuda10.2-rapids0.18-pytorch1.7-ubi8
 
 # Labels
 LABEL maintainer="Don Chesworth<donald.chesworth@gmail.com>"
