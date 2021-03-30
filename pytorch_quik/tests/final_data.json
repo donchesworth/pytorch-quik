@@ -1,0 +1,42 @@
+{
+    "text": [
+        "this is absolutely terrible",
+        "it's ok",
+        "I really like it",
+        "I love it!",
+        "something is not right",
+        "I don't think I like it",
+        "I could get used to this",
+        "I think I'm a fan."
+    ],
+    "category": [
+        1,
+        4,
+        7,
+        8,
+        2,
+        3,
+        5,
+        6
+    ],
+    "label": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1
+    ],
+    "pred": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1       
+    ]
+}
