@@ -70,8 +70,3 @@ def id_str(
     filename = Path.cwd().joinpath(*path_list).with_suffix(suffix)
     filename.parent.mkdir(parents=True, exist_ok=True)
     return filename
-
-
-def sd_str(args):
-    id_str = "data/state_dict_" + args.date + ".pt"
-    id_str = "/".join(["data", args.bert_type, args.source, id_str])
