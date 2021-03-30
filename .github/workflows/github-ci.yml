@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Run container
         run: |
-          /opt/dq/entrypoint.sh
+          /opt/pq/entrypoint.sh
       - name: Upload coverage
         uses: actions/upload-artifact@v2
         with:
