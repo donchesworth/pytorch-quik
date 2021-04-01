@@ -2,6 +2,7 @@ torch>=1.7.0
 torchvision
 pandas>=1.1
 transformers
+imbalanced-learn
 dask-quik
 pytest
 pytest-cov
