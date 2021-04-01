@@ -1,6 +1,8 @@
 torch>=1.7.0
 torchvision
 pandas>=1.1
+dask-quik
 pytest
 pytest-cov
 codecov
+bump2version
