@@ -22,7 +22,7 @@ def args():
             "GPU not found, setting has_gpu to False. \
             Some tests will be skipped"
         )
-    args.bert_type = 'roberta'
+    args.bert_type = "roberta"
     return args
 
 
