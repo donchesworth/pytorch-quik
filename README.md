@@ -7,3 +7,4 @@
 [![codecov](https://codecov.io/gh/donchesworth/pytorch-quik/branch/main/graph/badge.svg?token=U92M8C8AFM)](https://codecov.io/gh/donchesworth/pytorch-quik)
 
 Functions to make working in pytorch quik-er
+
