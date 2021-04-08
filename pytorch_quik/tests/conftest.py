@@ -1,6 +1,7 @@
 from pathlib import Path
 import pytest
 import pandas as pd
+import torch
 import json
 from argparse import Namespace
 from os import system
@@ -41,3 +42,13 @@ def final_data():
         df = pd.DataFrame(json.load(f))
     df.index.names = ["ui_index"]
     return df
+
+
+@pytest.fixture(scope="session")
+def ttypes():
+    """tensor data types for transformation"""
+    ttypes = {
+        0: torch.int16,
+        1: torch.int16
+    }
+    return ttypes
