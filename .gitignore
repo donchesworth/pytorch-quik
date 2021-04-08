@@ -8,4 +8,6 @@ __pycache__*
 .vscode**
 archive**
 .idea**
-.code-workspace**
+*.code-workspace**
+*.egg-info
+*.devcontainer/req*
