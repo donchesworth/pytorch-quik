@@ -5,6 +5,16 @@ import torch.distributed as dist
 from typing import Callable
 from argparse import Namespace
 import os
+from tqdm import tqdm
+
+
+def tq_bar(esteps, epoch=0, total_epochs=0, train=True):
+    pbar = tqdm(total=esteps)
+    if train:
+        pbar.set_description(f'epoch: {epoch +1}/{total_epochs}')
+    else:
+        pbar.set_description('testing progress')
+    return pbar
 
 
 def train(train_fn: Callable, args: Namespace):
