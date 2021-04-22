@@ -3,8 +3,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import OrderedDict
 from typing import Union, Optional, List, Dict, Tuple
+import time
+from datetime import timedelta
 import numpy as np
 import pandas as pd
+from torch import Tensor
+import torch
 
 try:
     import cudf
@@ -34,7 +38,7 @@ def inverse_dict(
     """invert a dictionary
 
     Args:
-        dict_direct (Union[Dict, OrderedDict]): the original 
+        dict_direct (Union[Dict, OrderedDict]): the original
             dictionary to be inverted
     Returns:
         OrderedDict[str, int]: The inverted ordered dictionary
@@ -152,3 +156,90 @@ def show_confusion_matrix(
         ]
         df = pd.DataFrame(conf_mat, *labels)
         print(df)
+
+
+class SmoothenLoss:
+    """Taken from fast.ai, Create a smooth moving average with a beta
+    value (https://github.com/fastai/fastai1/blob/master/fastai/callback.py)"""
+
+    def __init__(self, beta: float):
+        """Create the smoothen value instance for loss metrics
+
+        Args:
+            beta (float): The smoothing beta
+        """
+        self.beta = beta
+        self.n = 0
+        self.mov_avg = 0
+
+    def add_value(self, val: float) -> None:
+        """Add value to calculate updated smoothed value.
+
+        Args:
+            val (float): The value to be added
+        """
+
+        self.n += 1
+        self.mov_avg = self.beta * self.mov_avg + (1 - self.beta) * val
+        self.smooth = self.mov_avg / (1 - self.beta ** self.n)
+
+
+class LossMetrics:
+    """Don's method to store dict without callbacks, adapted from
+    https://github.com/fastai/fastai/blob/master/fastai/metrics.py"""
+
+    def __init__(self, beta: Optional[float] = 0.99):
+        """Create the loss metrics structure
+
+        Args:
+            beta (float): A beta for smoothing the average. Default is 0.99
+        """
+        self.beta = beta
+        self.smoothener = SmoothenLoss(self.beta)
+        self.state_dict = {"epoch": 0, "train_loss": 0.0, "valid_loss": 0.0}
+        self.results = pd.DataFrame()
+        self.start_time = time.time()
+
+    def add_loss(self, loss: Tensor):
+        """Handle gradient calculation on loss.
+
+        Args:
+            loss (Tensor): The loss tensor from criterion
+        """
+        loss = loss.float().detach().cpu().item()
+        self.smoothener.add_value(loss)
+        self.state_dict["train_loss"] = self.smoothener.smooth
+
+    def add_vloss(self, vlosses: List[Tensor], nums: List[int]):
+        """Handle validation loss calculation
+
+        Args:
+            vlosses (List[Tensor]): A set of validation tensors
+            nums (List[int]): The length of the groups
+        """
+        nums = np.array(nums, dtype=np.float32)
+        fl = (
+            torch.stack(vlosses).data.cpu().numpy() * nums
+        ).sum() / nums.sum()
+        self.state_dict["valid_loss"] = fl
+
+    def calc_time(self):
+        """Add time to the metrics DataFrame"""
+        elapsed = time.time() - self.start_time
+        self.duration = (
+            str(timedelta(seconds=elapsed)).split(".")[0].partition(":")[2]
+        )
+        self.state_dict["time"] = self.duration
+
+    def write(self):
+        """write out the metrics dataframe when completed"""
+        self.calc_time()
+        self.results = pd.concat(
+            [
+                self.results,
+                pd.DataFrame(
+                    self.state_dict, index=[self.state_dict["epoch"]]
+                ),
+            ]
+        )
+        self.state_dict["epoch"] += 1
