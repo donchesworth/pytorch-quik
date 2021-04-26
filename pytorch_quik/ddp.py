@@ -17,7 +17,7 @@ def tq_bar(esteps, epoch=0, total_epochs=0, train=True):
     return pbar
 
 
-def train(train_fn: Callable, args: Namespace):
+def traverse(train_fn: Callable, args: Namespace):
     """Determine whether to train using DistributedDataParallel
     or a single training instance
 
@@ -27,12 +27,12 @@ def train(train_fn: Callable, args: Namespace):
         args (Namespace): The argparse Namespace for this script
     """
     if bool(dq.utils.gpus()):
-        ddp_train(train_fn, args)
+        ddp_traverse(train_fn, args)
     else:
         train_fn(gpu=None, args=args)
 
 
-def ddp_train(train_fn: Callable, args: Namespace):
+def ddp_traverse(train_fn: Callable, args: Namespace):
     """Using multiprocessing, initiate a DistributedDataParallel
     training process
 
