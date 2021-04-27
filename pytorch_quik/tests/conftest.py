@@ -28,7 +28,7 @@ def args(gpus):
             "GPU not found, setting has_gpu to False. \
             Some tests will be skipped"
         )
-        args.device = 'cpu'
+        args.device = torch.device('cpu')
     else:
         args.device = torch.device('cuda', 0)
     args.nr = 0
