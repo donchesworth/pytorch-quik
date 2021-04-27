@@ -1,6 +1,7 @@
 from sklearn.metrics import f1_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 # from collections import OrderedDict
 from typing import Union, Optional, List, Dict, Tuple, OrderedDict
 import time
@@ -15,7 +16,9 @@ try:
 except ImportError:
     import dask_quik.dummy as cudf
 
-ArrType = Union[np.ndarray, pd.Series, pd.DataFrame, cudf.DataFrame]
+ArrType = Union[
+    np.ndarray, pd.Series, pd.DataFrame, cudf.DataFrame, torch.Tensor
+]
 LABELS = ["Actual", "Predicted"]
 
 
@@ -29,7 +32,7 @@ def direct_dict(classes: Tuple[str]) -> OrderedDict[int, str]:
         OrderedDict[int, str]: A final ordered dict
     """
     class_keys = range(len(classes))
-    return OrderedDict(zip(class_keys), classes)
+    return OrderedDict(zip(class_keys, classes))
 
 
 def inverse_dict(
@@ -48,9 +51,8 @@ def inverse_dict(
 
 
 def choose_a_class(preds_array: ArrType) -> np.array:
-    """Given an array with probabilities for multiple classes,
-    convert to a np.array and provide the argmax class
-    back as a np.array
+    """Given an np.array with probabilities for multiple classes,
+    provide the argmax class back as a np.array
 
     Args:
         preds_array (ArrType): 2d array with class probabilities
@@ -58,15 +60,35 @@ def choose_a_class(preds_array: ArrType) -> np.array:
     Returns:
         np.array: 1d np.array with selected class
     """
-    if isinstance(preds_array, cudf.DataFrame):
-        preds_array = preds_array.as_matrix()
-    elif isinstance(preds_array, (pd.DataFrame, pd.Series)):
-        preds_array = preds_array.to_numpy()
     return np.argmax(preds_array, axis=1).flatten()
 
 
+def numpize_array(arr: ArrType) -> np.array:
+    """Given some type of array, try to convert it to a
+    numpy array, and of one dimension
+
+    Args:
+        arr (ArrType): 1d or 2d array of some type
+
+    Returns:
+        np.array: 1d numpy array
+    """
+    if isinstance(arr, cudf.DataFrame):
+        arr = arr.as_matrix()
+    elif isinstance(arr, (pd.DataFrame, pd.Series)):
+        arr = arr.to_numpy()
+    elif isinstance(arr, torch.Tensor):
+        arr = arr.numpy()
+    if len(arr.shape) == 2:
+        if arr.shape[1] == 1:
+            arr = arr.squeeze()
+        else:
+            arr = choose_a_class(arr)
+    return arr
+
+
 def accuracy_per_class(
-    preds_array: ArrType, actual_array: ArrType, label_dict
+    preds_array: ArrType, true_array: ArrType, label_dict
 ):
     """Accuracy per class function taken from Ali Anastassiou's
     BERT course
@@ -74,34 +96,35 @@ def accuracy_per_class(
 
     Args:
         preds_array (ArrType): [description]
-        actual_array (ArrType): [description]
+        true_array (ArrType): [description]
         label_dict ([type]): [description]
     """
-    label_dict_inverse = {v: k for k, v in label_dict.items()}
     # preds_array = choose_a_class(preds_array)
-    for nclass in np.unique(actual_array):
-        y_preds = preds_array[actual_array == nclass]
-        y_true = actual_array[actual_array == nclass]
-        print(f"Class: {label_dict_inverse[nclass]}")
+    [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
+    for nclass in np.unique(tarr):
+        y_preds = parr[tarr == nclass]
+        y_true = tarr[tarr == nclass]
+        print(f"Class: {label_dict[nclass]}")
         print(f"Accuracy: {len(y_preds[y_preds==nclass])}/{len(y_true)}\n")
 
 
 def f1_score_func(
-    prediction_array: ArrType, actual_array: ArrType
+    preds_array: ArrType, true_array: ArrType
 ) -> np.float64:
     """F1 score function taken from Ali Anastassiou's BERT course
     https://www.coursera.org/projects/sentiment-analysis-bert
 
 
     Args:
-        preds (ArrType): Prediction array
-        labels (ArrType): True labels array
+        preds_array (ArrType): Prediction array
+        true_array (ArrType): True labels array
 
     Returns:
         np.float64: F1 score
     """
-    prediction_array = choose_a_class(prediction_array)
-    return f1_score(actual_array, prediction_array, average="weighted")
+    [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
+    f1 = f1_score(tarr, parr, average="weighted")
+    print(f'weighted f1 score {f1:.3f}')
 
 
 def seaborn_confusion_matrix(conf_matrix: np.ndarray, classes: List[str]):
@@ -126,8 +149,8 @@ def seaborn_confusion_matrix(conf_matrix: np.ndarray, classes: List[str]):
 
 
 def show_confusion_matrix(
-    predicted_array: ArrType,
-    actual_array: ArrType,
+    preds_array: ArrType,
+    true_array: ArrType,
     classes: List[str],
     plot: Optional[bool] = False,
 ):
@@ -137,17 +160,16 @@ def show_confusion_matrix(
     set-meta-name-for-rows-and-columns-in-pandas-dataframe
 
     Args:
-        predicted_array (ArrType): A 2d np.array to be argmaxed, a
+        preds_array (ArrType): A 2d np.array to be argmaxed, a
             pd.Series, or a 1d np.array
-        actual_array (ArrType): A pd.Series or 1d np.array
+        true_array (ArrType): A pd.Series or 1d np.array
         classes (List[str]): A list of chart labels for each
             classification type
         plot (bool, optional): If this is in a notebook, then you may
         wish to create a seaborn plot. Defaults to False.
     """
-    if len(predicted_array.shape) == 2:
-        predicted_array = choose_a_class(predicted_array)
-    conf_mat = confusion_matrix(actual_array, predicted_array)
+    [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
+    conf_mat = confusion_matrix(tarr, parr)
     if plot:
         seaborn_confusion_matrix(conf_mat, classes)
     else:

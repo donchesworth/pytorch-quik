@@ -28,12 +28,13 @@ class QuikTraveler:
         device = torch.device(args.device.type, gpu)
         if gpu is not None:
             rank = args.nr * args.gpus + gpu
+            world_size = args.gpus * args.nodes
             self.is_ddp = True
         else:
             rank = None
             self.is_ddp = False
         self.gpus = Gpus(
-            device, gpu, args.nr, rank, args.gpus, args.world_size
+            device, gpu, args.nr, rank, args.gpus, world_size
         )
         self.is_logger = not self.is_ddp
         if gpu == 0:

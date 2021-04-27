@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 from typing import Optional
 from argparse import Namespace
+import torch
 
 
 def sec_str(st: float) -> str:
@@ -70,3 +71,12 @@ def id_str(
     filename = Path.cwd().joinpath(*path_list).with_suffix(suffix)
     filename.parent.mkdir(parents=True, exist_ok=True)
     return filename
+
+
+def tens_load(ttype, args, loc_only=False):
+    print("loading " + ttype + " " + str(args.device))
+    file_id = id_str(ttype, args)
+    if loc_only:
+        return file_id
+    else:
+        return torch.load(file_id)
