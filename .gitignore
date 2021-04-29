@@ -11,3 +11,4 @@ archive**
 *.code-workspace**
 *.egg-info
 *.devcontainer/req*
+*.coverage

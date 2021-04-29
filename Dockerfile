@@ -6,7 +6,7 @@ LABEL org.label-schema.schema-version="0.1"
 LABEL org.label-schema.name="pytorch-quik-test"
 LABEL org.label-schema.description="Utilities for training with pytorch quik-er"
 
-RUN pip install matplotlib seaborn sklearn
+RUN pip install matplotlib sklearn
 
 # Project installs
 WORKDIR /opt/pq

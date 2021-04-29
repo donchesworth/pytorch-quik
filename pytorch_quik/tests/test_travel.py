@@ -4,13 +4,14 @@ from torch.utils import data
 import torch.utils.data as td
 
 
-def test_quik_traveler(args):
+def test_quik_traveler(gpus, args):
     myqt = QuikTraveler(0, args)
-    assert(isinstance(myqt, QuikTraveler))
-    assert(isinstance(myqt.epochs, int))
+    assert isinstance(myqt, QuikTraveler)
+    assert isinstance(myqt.epochs, int)
 
 
-def test_quik_data(sample_tensor, sample_labels, args):
+def test_quik_data(gpus, sample_tensor, sample_labels, args):
+    args.gpus = gpus
     if args.gpus == 0:
         pytest.skip()
     myqt = QuikTraveler(0, args)

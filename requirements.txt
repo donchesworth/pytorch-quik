@@ -6,5 +6,7 @@ imbalanced-learn
 dask-quik
 pytest
 pytest-cov
+pytest-mpl
+pytest-lazy-fixture
 codecov
 bump2version

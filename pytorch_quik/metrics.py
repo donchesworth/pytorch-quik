@@ -1,6 +1,6 @@
 from sklearn.metrics import f1_score, confusion_matrix
 import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.colors as mclr
 
 # from collections import OrderedDict
 from typing import Union, Optional, List, Dict, Tuple, OrderedDict
@@ -50,7 +50,7 @@ def inverse_dict(
     return OrderedDict(dict_inverse)
 
 
-def choose_a_class(preds_array: ArrType) -> np.array:
+def choose_a_class(preds_array: ArrType) -> ArrType:
     """Given an np.array with probabilities for multiple classes,
     provide the argmax class back as a np.array
 
@@ -87,9 +87,7 @@ def numpize_array(arr: ArrType) -> np.array:
     return arr
 
 
-def accuracy_per_class(
-    preds_array: ArrType, true_array: ArrType, label_dict
-):
+def accuracy_per_class(preds_array: ArrType, true_array: ArrType, label_dict):
     """Accuracy per class function taken from Ali Anastassiou's
     BERT course
     https://www.coursera.org/projects/sentiment-analysis-bert
@@ -108,9 +106,7 @@ def accuracy_per_class(
         print(f"Accuracy: {len(y_preds[y_preds==nclass])}/{len(y_true)}\n")
 
 
-def f1_score_func(
-    preds_array: ArrType, true_array: ArrType
-) -> np.float64:
+def f1_score_func(preds_array: ArrType, true_array: ArrType) -> np.float64:
     """F1 score function taken from Ali Anastassiou's BERT course
     https://www.coursera.org/projects/sentiment-analysis-bert
 
@@ -124,34 +120,51 @@ def f1_score_func(
     """
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
     f1 = f1_score(tarr, parr, average="weighted")
-    print(f'weighted f1 score {f1:.3f}')
+    print(f"weighted f1 score {f1:.3f}")
 
 
-def seaborn_confusion_matrix(conf_matrix: np.ndarray, classes: List[str]):
-    """Turn a confustion matrix into a seaborn plot.
+def matplotlib_gist_heat():
+    cmap = plt.get_cmap("gist_heat")
+    new_cmap = mclr.LinearSegmentedColormap.from_list(
+        "trunc({n},{a:.2f},{b:.2f})".format(n=cmap.name, a=0.01, b=0.9),
+        cmap(np.linspace(0.01, 0.9, 100)),
+    )
+    return new_cmap
+
+
+def matplotlib_confusion_matrix(
+    conf_matrix: np.ndarray, dir_classes: OrderedDict[int, str]
+):
+    """Turn a confustion matrix into a matplotlib plot.
 
     Args:
         conf_matrix (np.ndarray): a 2d array of the confusion matrix
-        classes (List[str]): A list of chart labels for each
+        dirclasses (OrderedDict[int, str]): A list of chart labels for each
             classification type
     """
-    fig, ax = plt.subplots(figsize=(len(classes), len(classes)))
-    sns.heatmap(
-        conf_matrix,
-        annot=True,
-        fmt="d",
-        xticklabels=classes,
-        yticklabels=classes,
-    )
+    heat_cmap = matplotlib_gist_heat()
+    ticks = list(dir_classes.keys())
+    classes = list(dir_classes.values())
+    lw = len(classes)
+    fig, ax = plt.subplots(figsize=(lw, lw))
+    plt.imshow(conf_matrix, cmap=heat_cmap)
+    plt.xticks(ticks=ticks, labels=classes)
+    plt.yticks(ticks=ticks, labels=classes, rotation=90)
+    _ = [
+        ax.text(j, i, conf_matrix[i, j], ha="center", va="center", color="w")
+        for i in range(lw)
+        for j in range(lw)
+    ]
     plt.ylabel(LABELS[0])
     plt.xlabel(LABELS[1])
     plt.show()
+    return plt
 
 
 def show_confusion_matrix(
     preds_array: ArrType,
     true_array: ArrType,
-    classes: List[str],
+    dir_classes: OrderedDict[int, str],
     plot: Optional[bool] = False,
 ):
     """Takes either a 2d classification array or a 1d array and true
@@ -163,21 +176,22 @@ def show_confusion_matrix(
         preds_array (ArrType): A 2d np.array to be argmaxed, a
             pd.Series, or a 1d np.array
         true_array (ArrType): A pd.Series or 1d np.array
-        classes (List[str]): A list of chart labels for each
-            classification type
+        dir_classes: OrderedDict[int, str]: A dict of index keys and
+            labels for each classification type
         plot (bool, optional): If this is in a notebook, then you may
         wish to create a seaborn plot. Defaults to False.
     """
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
     conf_mat = confusion_matrix(tarr, parr)
     if plot:
-        seaborn_confusion_matrix(conf_mat, classes)
+        cm = matplotlib_confusion_matrix(conf_mat, dir_classes)
     else:
+        classes = dir_classes.values()
         labels = [
             pd.MultiIndex.from_product([[lbl], classes]) for lbl in LABELS
         ]
-        df = pd.DataFrame(conf_mat, *labels)
-        print(df)
+        cm = pd.DataFrame(conf_mat, *labels)
+    return cm
 
 
 class SmoothenLoss:
