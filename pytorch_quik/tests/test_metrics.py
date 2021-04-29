@@ -5,11 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-try:
-    import cudf
-except ImportError:
-    pass
-
 
 def test_dir_classes(senti_classes):
     raw_classes = list(senti_classes.values())
@@ -37,7 +32,11 @@ def test_numpize_array(args):
     p = pd.DataFrame(np.random.randint(0, ln, size=(ln, wd)))
     s = pd.Series(np.random.randint(0, ln, size=ln))
     objs = [t, p, s]
-    if args.gpus == 1:
+    if bool(args.gpus) and not args.has_gpu:
+        with pytest.raises(ImportError):
+            import cudf
+    elif args.gpus == 1:
+        import cudf
         c = cudf.DataFrame.from_pandas(p)
         objs.append(c)
     assert all(
