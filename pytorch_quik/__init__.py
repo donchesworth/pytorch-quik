@@ -6,7 +6,7 @@ import pytorch_quik.travel
 import pytorch_quik.utils
 
 __all__ = ["ddp", "metrics", "tensor", "transform", "travel", "utils"]
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 try:
     import pytorch_quik.bert

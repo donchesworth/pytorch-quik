@@ -13,7 +13,7 @@ install_requires = [x.strip() for x in all_reqs if "git+" not in x]
 
 setup(
     name="pytorch-quik",
-    version="0.0.2",
+    version="0.0.3",
     description="functions to make working in pytorch quik-er",
     long_description=README,
     long_description_content_type="text/markdown",
