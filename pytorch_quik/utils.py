@@ -84,7 +84,7 @@ def tens_load(ttype, args, loc_only=False):
         return torch.load(file_id)
 
 
-def learning_args(parser: ArgumentParser) -> ArgumentParser:
+def learning_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "-n",
         "--nodes",
@@ -106,25 +106,29 @@ def learning_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-e",
         "--epochs",
-        default=5,
+        default=kwargs.get("epochs", 5),
         type=int,
         metavar="N",
         help="number of total epochs to run (2, 3, 5)",
     )
     parser.add_argument(
-        "-bs", "--bs", default=16, type=int, help="batch size (16, 32)"
+        "-bs",
+        "--bs",
+        default=kwargs.get("bs", 16),
+        type=int,
+        help="batch size (16, 32)",
     )
     parser.add_argument(
         "-lr",
         "--learning_rate",
-        default=2e-6,
+        default=kwargs.get("learning_rate", 2e-6),
         type=float,
         help="learning rate for an optimizer",
     )
     parser.add_argument(
         "-wd",
         "--weight_decay",
-        default=0,
+        default=kwargs.get("weight_decay", 0),
         type=float,
         help="weight decay for an optimizer",
     )
@@ -132,7 +136,7 @@ def learning_args(parser: ArgumentParser) -> ArgumentParser:
         "-nw",
         "--num_workers",
         # default=torch.get_num_threads(),
-        default=0,
+        default=kwargs.get("num_workers", 0),
         type=int,
         help="number of workers",
     )
