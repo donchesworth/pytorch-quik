@@ -17,7 +17,7 @@ setup(
     description="functions to make working in pytorch quik-er",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://github.com/donchesworth/dask-quik",
+    url="https://github.com/donchesworth/pytorch-quik",
     author="Don Chesworth",
     author_email="donald.chesworth@gmail.com",
     license="BSD",
