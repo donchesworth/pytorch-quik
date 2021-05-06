@@ -2,7 +2,7 @@ import dask_quik as dq
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
-from typing import Callable
+from typing import Callable, NamedTuple, Union
 from argparse import Namespace
 import os
 from tqdm import tqdm
@@ -44,23 +44,22 @@ def ddp_traverse(train_fn: Callable, args: Namespace):
     mp.spawn(train_fn, nprocs=args.gpus, args=(args,))
 
 
-def setup(gpu: str, args: Namespace):
+def setup(gpu: str, args: Union[Namespace, NamedTuple]):
     """Setup of the distrubtion settings.
 
     Args:
         gpu (str): The current gpu
-        args (Namespace): The argparse Namespace for this script
+        args (Union[Namespace, NamedTuple]): The gpu parameters
     """
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
     os.environ["NCCL_P2P_LEVEL"] = "0"
-    rank = args.nr * args.gpus + gpu
 
     dist.init_process_group(
         backend="nccl",
         init_method="env://",
         world_size=args.world_size,
-        rank=rank,
+        rank=args.rank_id,
     )
 
     # Explicitly setting seed to make sure that models created in two processes

@@ -57,7 +57,7 @@ def id_str(
         epoch = "e" + str(epoch)
     elif ftype == "preds":
         suffix = ".csv"
-    else:
+    elif ftype != "model":
         ftype = ftype + "_tensor"
     id_list = [ftype, lbls, epoch, str(args.data_date), gpu]
     id_str = "_".join(filter(None, id_list))

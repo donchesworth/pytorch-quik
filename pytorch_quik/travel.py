@@ -56,7 +56,7 @@ class QuikTraveler:
             torch.cuda.empty_cache()
         if self.gpus.gpu is not None:
             torch.cuda.set_device(self.gpus.device)
-            pq.ddp.setup(self.gpus.gpu, args)
+            pq.ddp.setup(self.gpus.gpu, self.gpus)
 
     def set_criterion(self, criterion_fcn, kwargs={}):
         if callable(criterion_fcn):
