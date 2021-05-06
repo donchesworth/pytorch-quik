@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Optional
 from argparse import Namespace
 import torch
+from argparse import ArgumentParser
+import dask_quik as dq
 
 
 def sec_str(st: float) -> str:
@@ -80,3 +82,63 @@ def tens_load(ttype, args, loc_only=False):
         return file_id
     else:
         return torch.load(file_id)
+
+
+def learning_args(parser: ArgumentParser) -> ArgumentParser:
+    parser.add_argument(
+        "-n",
+        "--nodes",
+        default=1,
+        type=int,
+        metavar="N",
+        help="number of data loading workers (default: 4)",
+    )
+    parser.add_argument(
+        "-g",
+        "--gpus",
+        default=dq.utils.gpus(),
+        type=int,
+        help="number of gpus per node",
+    )
+    parser.add_argument(
+        "-nr", "--nr", default=0, type=int, help="ranking within the nodes"
+    )
+    parser.add_argument(
+        "-e",
+        "--epochs",
+        default=5,
+        type=int,
+        metavar="N",
+        help="number of total epochs to run (2, 3, 5)",
+    )
+    parser.add_argument(
+        "-bs", "--bs", default=16, type=int, help="batch size (16, 32)"
+    )
+    parser.add_argument(
+        "-lr",
+        "--learning_rate",
+        default=2e-6,
+        type=float,
+        help="learning rate for an optimizer",
+    )
+    parser.add_argument(
+        "-wd",
+        "--weight_decay",
+        default=0,
+        type=float,
+        help="weight decay for an optimizer",
+    )
+    parser.add_argument(
+        "-nw",
+        "--num_workers",
+        # default=torch.get_num_threads(),
+        default=0,
+        type=int,
+        help="number of workers",
+    )
+    parser.add_argument(
+        "--find_unused_parameters",
+        dest="find_unused_parameters",
+        action="store_true",
+    )
+    return parser
