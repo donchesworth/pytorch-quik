@@ -129,12 +129,6 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         help="number of gpus per node",
     )
     parser.add_argument(
-        "--device",
-        action=TorchDeviceAction,
-        nargs=0,
-        help="whether should be run on gpu or cpu",
-    )
-    parser.add_argument(
         "-nr",
         "--nr",
         default=0,
