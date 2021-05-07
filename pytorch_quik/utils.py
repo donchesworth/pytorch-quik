@@ -1,9 +1,9 @@
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from argparse import Namespace
 import torch
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Action, ArgumentTypeError
 import dask_quik as dq
 
 
@@ -75,7 +75,20 @@ def id_str(
     return filename
 
 
-def tens_load(ttype, args, loc_only=False):
+def tens_load(
+    ttype: str, args: Namespace, loc_only: Optional[bool] = False
+) -> Union[str, torch.Tensor]:
+    """Load a PyTorch tensor
+
+    Args:
+        ttype (str): The type of tensor (train, valid, test)
+        args (Namespace): The argparse namespace
+        loc_only (bool, optional): If the tensor isn't wanted, but
+        only the location (filename). Defaults to False.
+
+    Returns:
+        Union[str, torch.Tensor]: [description]
+    """
     print("loading " + ttype + " " + str(args.device))
     file_id = id_str(ttype, args)
     if loc_only:
@@ -84,7 +97,22 @@ def tens_load(ttype, args, loc_only=False):
         return torch.load(file_id)
 
 
-def learning_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
+def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
+    """Add learn args will add arguments that are common to PyTorch, and
+    necessary for a pytorch-quik traveller. These can be set by command
+    line, or can be defaulted in a script, or the defaults here can be
+    used.
+
+    Args:
+        parser (ArgumentParser): This is the parser from the PyTorch project.
+        kwargs (dict, optional): Sometimes the individual project will want
+        to have default learning args. For instance, learning rate could be
+        set at the command line, if not by the PyTorch project, or if not it
+        will be set here. If they are all set here, then kwargs defaults to {}.
+
+    Returns:
+        ArgumentParser: The same ArgumentParser but with loaded learning args.
+    """
     parser.add_argument(
         "-n",
         "--nodes",
@@ -101,7 +129,17 @@ def learning_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         help="number of gpus per node",
     )
     parser.add_argument(
-        "-nr", "--nr", default=0, type=int, help="ranking within the nodes"
+        "--device",
+        action=TorchDeviceAction,
+        nargs=0,
+        help="whether should be run on gpu or cpu",
+    )
+    parser.add_argument(
+        "-nr",
+        "--nr",
+        default=0,
+        type=int,
+        help="ranking within the nodes",
     )
     parser.add_argument(
         "-e",
@@ -114,16 +152,16 @@ def learning_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "-bs",
         "--bs",
-        default=kwargs.get("bs", 16),
+        default=kwargs.get("bs", 50000),
         type=int,
-        help="batch size (16, 32)",
+        help="batch size (16, 32, 150000)",
     )
     parser.add_argument(
         "-lr",
         "--learning_rate",
-        default=kwargs.get("learning_rate", 2e-6),
+        default=kwargs.get("learning_rate", 1e-5),
         type=float,
-        help="learning rate for an optimizer",
+        help="learning rate for an optimizer (1e-5, 2e-6)",
     )
     parser.add_argument(
         "-wd",
