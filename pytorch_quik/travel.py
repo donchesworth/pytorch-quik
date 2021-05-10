@@ -38,8 +38,8 @@ class QuikTraveler:
             device=device,
             gpu=gpu,
             node_rank=args.nr,
-            rank=rank,
-            gpus=args.gpus,
+            rank_id=rank,
+            total_gpus=args.gpus,
             world_size=world_size,
         )
         self.is_logger = not self.is_ddp
