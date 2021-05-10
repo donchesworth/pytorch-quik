@@ -37,7 +37,7 @@ class QuikTraveler:
         self.gpus = Gpus(
             device=device,
             gpu=gpu,
-            nr=args.nr,
+            node_rank=args.nr,
             rank=rank,
             gpus=args.gpus,
             world_size=world_size,
