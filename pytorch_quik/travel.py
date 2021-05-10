@@ -11,7 +11,7 @@ Gpus = namedtuple(
 DlKwargs = namedtuple(
     "DlKwargs", "batch_size, shuffle, pin_memory, num_workers"
 )
-OptKwargs = namedtuple("OptKwargs", "lr, weight_decay, eps")
+OptKwargs = namedtuple("OptKwargs", "lr, weight_decay, eps, betas")
 
 
 class QuikTraveler:
@@ -21,32 +21,41 @@ class QuikTraveler:
 
     metrics = pq.metrics.LossMetrics(0.99)
 
-    def __init__(self, gpu, args):
+    def __init__(self, args, gpu=None):
         # self.partition = partition
         self.args = args
-        self.epochs = getattr(args, "epochs", 1)
-        device = torch.device(args.device.type, gpu)
+        self.epochs = args.epochs
         if gpu is not None:
+            device = torch.device("cuda", gpu)
             rank = args.nr * args.gpus + gpu
             world_size = args.gpus * args.nodes
             self.is_ddp = True
         else:
+            device = torch.device("cpu")
             rank = None
             self.is_ddp = False
         self.gpus = Gpus(
-            device, gpu, args.nr, rank, args.gpus, world_size
+            device=device,
+            gpu=gpu,
+            nr=args.nr,
+            rank=rank,
+            gpus=args.gpus,
+            world_size=world_size,
         )
         self.is_logger = not self.is_ddp
         if gpu == 0:
             self.is_logger = True
         self.dlkwargs = DlKwargs(
-            args.bs,
+            bs=args.bs,
             shuffle=False,
             pin_memory=True,
             num_workers=args.num_workers,
         )
         self.optkwargs = OptKwargs(
-            args.learning_rate, args.weight_decay, eps=1e-8
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            eps=args.eps,
+            betas=args.betas,
         )
         self.find_unused_parameters = args.find_unused_parameters
         self.dl = {}
