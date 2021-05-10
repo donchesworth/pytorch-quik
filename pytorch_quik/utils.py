@@ -97,6 +97,20 @@ def tens_load(
         return torch.load(file_id)
 
 
+def beta_type(strings: str) -> tuple:
+    """An argparse type function that takes a string and returns
+    a two part tuple for a low and high beta for an optimizer
+
+    Args:
+        strings (str): a comma separated string of numbers
+
+    Returns:
+        tuple: a tuple of floats
+    """
+    mapped_beta = map(float, strings.split(","))
+    return tuple(mapped_beta)
+
+
 def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     """Add learn args will add arguments that are common to PyTorch, and
     necessary for a pytorch-quik traveller. These can be set by command
@@ -153,6 +167,7 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "-lr",
         "--learning_rate",
+        dest="lr",
         default=kwargs.get("learning_rate", 1e-5),
         type=float,
         help="learning rate for an optimizer (1e-5, 2e-6)",
@@ -161,6 +176,19 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         "-wd",
         "--weight_decay",
         default=kwargs.get("weight_decay", 0),
+        type=float,
+        help="weight decay for an optimizer",
+    )
+    parser.add_argument(
+        "--betas",
+        type=beta_type,
+        default=(0.9, 0.99),
+        help="beta values for an optimizer. Enter them as \
+            one string, such as '0.90, 0.99'.",
+    )
+    parser.add_argument(
+        "-eps",
+        default=kwargs.get("eps", 1e-08),
         type=float,
         help="weight decay for an optimizer",
     )
