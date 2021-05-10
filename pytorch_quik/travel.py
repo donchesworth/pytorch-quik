@@ -72,14 +72,18 @@ class QuikTraveler:
             self.criterion = criterion_fcn(**kwargs)
             self.criterion.to(self.gpus.device)
 
-    def set_optimizer(self, optimizer_fcn):
+    def set_optimizer(self, optimizer_fcn, kwargs):
         if self.is_ddp:
             self.optimizer = optimizer_fcn(
-                self.model.module.parameters(), **self.optkwargs._asdict()
+                self.model.module.parameters(),
+                **self.optkwargs._asdict(),
+                **kwargs,
             )
         else:
             self.optimizer = optimizer_fcn(
-                self.model.parameters(), **self.optkwargs._asdict()
+                self.model.parameters(),
+                **self.optkwargs._asdict(),
+                **kwargs,
             )
 
     def set_scheduler(self, scheduler_fcn, kwargs):
