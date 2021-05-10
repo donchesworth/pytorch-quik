@@ -46,7 +46,7 @@ class QuikTraveler:
         if gpu == 0:
             self.is_logger = True
         self.dlkwargs = DlKwargs(
-            bs=args.bs,
+            batch_size=args.bs,
             shuffle=False,
             pin_memory=True,
             num_workers=args.num_workers,
