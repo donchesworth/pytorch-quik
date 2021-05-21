@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, Union
 from argparse import Namespace
 import torch
-from argparse import ArgumentParser, Action, ArgumentTypeError
+from argparse import ArgumentParser
 import dask_quik as dq
 
 
@@ -143,6 +143,12 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         help="number of gpus per node",
     )
     parser.add_argument(
+        "-amp",
+        "--mixed_precision",
+        action="store_true",
+        default=True,
+    )
+    parser.add_argument(
         "-nr",
         "--nr",
         default=0,
@@ -182,7 +188,7 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "--betas",
         type=beta_type,
-        default=(0.9, 0.99),
+        default=kwargs.get("betas", (0.9, 0.99)),
         help="beta values for an optimizer. Enter them as \
             one string, such as '0.90, 0.99'.",
     )

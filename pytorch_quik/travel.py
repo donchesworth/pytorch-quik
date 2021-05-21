@@ -4,9 +4,22 @@ from torch.utils import data
 import torch.utils.data.distributed as ddist
 import pytorch_quik as pq
 from collections import namedtuple
+from contextlib import nullcontext
+from torch.cuda.amp import autocast
+
 
 Gpus = namedtuple(
-    "Gpus", "device, gpu, node_rank, rank_id, total_gpus, world_size"
+    "Gpus",
+    [
+        "device",
+        "gpu",
+        "node_rank",
+        "rank_id",
+        "total_gpus",
+        "world_size",
+        "mixed_precision",
+        "precision_type",
+    ],
 )
 DlKwargs = namedtuple(
     "DlKwargs", "batch_size, shuffle, pin_memory, num_workers"
@@ -34,6 +47,10 @@ class QuikTraveler:
             device = torch.device("cpu")
             rank = None
             self.is_ddp = False
+        if args.mixed_precision:
+            pt = autocast()
+        else:
+            pt = nullcontext()
         self.gpus = Gpus(
             device=device,
             gpu=gpu,
@@ -41,6 +58,8 @@ class QuikTraveler:
             rank_id=rank,
             total_gpus=args.gpus,
             world_size=world_size,
+            mixed_precision=args.mixed_precision,
+            precision_type=pt,
         )
         self.is_logger = not self.is_ddp
         if gpu == 0:
