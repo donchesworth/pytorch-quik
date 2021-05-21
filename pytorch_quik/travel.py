@@ -1,5 +1,7 @@
 import torch
+from torch.cuda.amp import GradScaler, autocast
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn.utils import clip_grad_norm_
 from torch.utils import data
 import torch.utils.data.distributed as ddist
 import pytorch_quik as pq
@@ -143,6 +145,9 @@ class QuikTraveler:
             tensorDataset, self.gpus, self.is_ddp, self.dlkwargs, self.epochs
         )
 
+    def add_amp(self):
+        self.amp = self.QuikAmp()
+
     class QuikData:
         def __init__(self, tensorDataset, gpus, is_ddp, dlkwargs, epochs):
             self.dataset = tensorDataset
@@ -173,3 +178,20 @@ class QuikTraveler:
                 sampler=self.sampler,
                 **self.dlkwargs._asdict(),
             )
+
+    class QuikAmp:
+        def __init__(self):
+            self.scaler = GradScaler()
+
+        def step(self, trvlr, loss, clip=True):
+            self.scale(loss).backward()
+            # https://pytorch.org/docs/stable/notes/amp_examples.html#working-with-unscaled-gradients
+            if clip:
+                self.unscale_(trvlr.optimizer)
+                # https://discuss.pytorch.org/t/about-torch-nn-utils-clip-grad-norm/13873
+                if hasattr(trvlr.model, 'module'):
+                    clip_grad_norm_(trvlr.model.module.parameters(), 1.0)
+                else:
+                    clip_grad_norm_(trvlr.model.parameters(), 1.0)
+            self.step(trvlr.optimizer)
+            self.update()
