@@ -7,7 +7,6 @@ import torch.utils.data.distributed as ddist
 import pytorch_quik as pq
 from collections import namedtuple
 from contextlib import nullcontext
-from torch.cuda.amp import autocast
 
 
 Gpus = namedtuple(
@@ -19,14 +18,26 @@ Gpus = namedtuple(
         "rank_id",
         "total_gpus",
         "world_size",
-        "mixed_precision",
-        "precision_type",
     ],
 )
 DlKwargs = namedtuple(
-    "DlKwargs", "batch_size, shuffle, pin_memory, num_workers"
+    "DlKwargs",
+    [
+        "batch_size",
+        "shuffle",
+        "pin_memory",
+        "num_workers",
+    ]
 )
-OptKwargs = namedtuple("OptKwargs", "lr, weight_decay, eps, betas")
+OptKwargs = namedtuple(
+    "OptKwargs",
+    [
+        "lr",
+        "weight_decay",
+        "eps",
+        "betas",
+    ]
+)
 
 
 class QuikTraveler:
@@ -49,10 +60,6 @@ class QuikTraveler:
             device = torch.device("cpu")
             rank = None
             self.is_ddp = False
-        if args.mixed_precision:
-            pt = autocast()
-        else:
-            pt = nullcontext()
         self.gpus = Gpus(
             device=device,
             gpu=gpu,
@@ -60,8 +67,6 @@ class QuikTraveler:
             rank_id=rank,
             total_gpus=args.gpus,
             world_size=world_size,
-            mixed_precision=args.mixed_precision,
-            precision_type=pt,
         )
         self.is_logger = not self.is_ddp
         if gpu == 0:
@@ -80,6 +85,7 @@ class QuikTraveler:
         )
         self.find_unused_parameters = args.find_unused_parameters
         self.dl = {}
+        self.amp = self.QuikAmp(args.mixed_precision)
 
     def run_prep(self, args):
         if self.gpus.device.type == "cuda":
@@ -145,8 +151,8 @@ class QuikTraveler:
             tensorDataset, self.gpus, self.is_ddp, self.dlkwargs, self.epochs
         )
 
-    def add_amp(self):
-        self.amp = self.QuikAmp()
+    # def add_amp(self):
+    #     self.amp = self.QuikAmp()
 
     class QuikData:
         def __init__(self, tensorDataset, gpus, is_ddp, dlkwargs, epochs):
@@ -180,8 +186,12 @@ class QuikTraveler:
             )
 
     class QuikAmp:
-        def __init__(self):
-            self.scaler = GradScaler()
+        def __init__(self, mixed_precision):
+            if mixed_precision:
+                self.scaler = GradScaler()
+                self.precision_type = autocast()
+            else:
+                self.precision_type = nullcontext()
 
         def step(self, trvlr, loss, clip=True):
             self.scale(loss).backward()
