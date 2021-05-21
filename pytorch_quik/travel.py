@@ -194,14 +194,14 @@ class QuikTraveler:
                 self.precision_type = nullcontext()
 
         def step(self, trvlr, loss, clip=True):
-            self.scale(loss).backward()
+            self.scaler.scale(loss).backward()
             # https://pytorch.org/docs/stable/notes/amp_examples.html#working-with-unscaled-gradients
             if clip:
-                self.unscale_(trvlr.optimizer)
+                self.scaler.unscale_(trvlr.optimizer)
                 # https://discuss.pytorch.org/t/about-torch-nn-utils-clip-grad-norm/13873
                 if hasattr(trvlr.model, 'module'):
                     clip_grad_norm_(trvlr.model.module.parameters(), 1.0)
                 else:
                     clip_grad_norm_(trvlr.model.parameters(), 1.0)
-            self.step(trvlr.optimizer)
-            self.update()
+            self.scaler.step(trvlr.optimizer)
+            self.scaler.update()
