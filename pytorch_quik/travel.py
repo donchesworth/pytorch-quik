@@ -99,8 +99,8 @@ class QuikTraveler:
             self.criterion = criterion_fcn(**kwargs)
             self.criterion.to(self.gpus.device)
 
-    def set_optimizer(self, optimizer_fcn, kwargs):
-        if self.is_ddp:
+    def set_optimizer(self, optimizer_fcn, kwargs={}):
+        if hasattr(self.model, 'module'):
             self.optimizer = optimizer_fcn(
                 self.model.module.parameters(),
                 **self.optkwargs._asdict(),
@@ -151,6 +151,13 @@ class QuikTraveler:
             tensorDataset, self.gpus, self.is_ddp, self.dlkwargs, self.epochs
         )
 
+    def backward(self, loss, clip=True):
+        if hasattr(self.amp, "scaler"):
+            self.amp.backward(self, loss, clip)
+        else:
+            loss.backward()
+            self.optimizer.step()
+
     # def add_amp(self):
     #     self.amp = self.QuikAmp()
 
@@ -193,7 +200,7 @@ class QuikTraveler:
             else:
                 self.precision_type = nullcontext()
 
-        def step(self, trvlr, loss, clip=True):
+        def backward(self, trvlr, loss, clip=True):
             self.scaler.scale(loss).backward()
             # https://pytorch.org/docs/stable/notes/amp_examples.html#working-with-unscaled-gradients
             if clip:
