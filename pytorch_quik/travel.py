@@ -196,9 +196,9 @@ class QuikTraveler:
         def __init__(self, mixed_precision):
             if mixed_precision:
                 self.scaler = GradScaler()
-                self.precision_type = autocast()
+                self.caster = autocast()
             else:
-                self.precision_type = nullcontext()
+                self.caster = nullcontext()
 
         def backward(self, trvlr, loss, clip=True):
             self.scaler.scale(loss).backward()
