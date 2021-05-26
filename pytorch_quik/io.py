@@ -48,7 +48,36 @@ def id_str(
     return filename
 
 
-def tens_load(
+def load_torch_object(
+    torch_type: str,
+    args: Namespace,
+    epoch: Optional[int] = None,
+    location: Optional[bool] = False,
+) -> Union[str, torch.Tensor]:
+    """Load a PyTorch object (tensor, model, state_dict)
+
+    Args:
+        ttype (str): The type of torch object (train, valid, test, state_dict)
+        args (Namespace): The argparse namespace
+        epoch (int, optional): Current epoch (for state_dict)
+        location (bool, optional): If the object isn't wanted, but
+        only the location (filename). Defaults to False.
+
+    Returns:
+        Union[str, torch.Tensor]: [description]
+    """
+    print("loading " + ttype + " " + str(args.device))
+    filename = id_str(ttype, args, epoch)
+    if location:
+        return filename
+    pt = torch.load(filename)
+    if ttype == "state_dict":
+        # DDP will leave module artifacts to be removed
+        pt = {k.replace("module.", ""): v for k, v in pt.items()}
+    return pt
+
+
+def load_tensor(
     ttype: str, args: Namespace, loc_only: Optional[bool] = False
 ) -> Union[str, torch.Tensor]:
     """Load a PyTorch tensor
@@ -70,7 +99,17 @@ def tens_load(
         return torch.load(file_id)
 
 
-def state_dict_save(model, args: Namespace, epoch: int):
+def load_state_dict():
+    sd_id = pq.utils.id_str("state_dict", args, epoch)
+    state_dict = torch.load(sd_id, map_location=self.gpus.device)
+    # DDP will leave module artifacts to be removed
+    ddp_state_dict = {
+        k.replace("module.", ""): v for k, v in state_dict.items()
+    }
+    self.model.load_state_dict(ddp_state_dict)
+
+
+def save_state_dict(model, args: Namespace, epoch: int):
     sd_id = id_str("state_dict", args, epoch)
     print("saving epoch " + str(epoch) + " state")
     if hasattr(model, "module"):

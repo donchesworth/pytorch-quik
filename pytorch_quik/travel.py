@@ -27,7 +27,7 @@ DlKwargs = namedtuple(
         "shuffle",
         "pin_memory",
         "num_workers",
-    ]
+    ],
 )
 OptKwargs = namedtuple(
     "OptKwargs",
@@ -36,7 +36,7 @@ OptKwargs = namedtuple(
         "weight_decay",
         "eps",
         "betas",
-    ]
+    ],
 )
 
 
@@ -100,7 +100,7 @@ class QuikTraveler:
             self.criterion.to(self.gpus.device)
 
     def set_optimizer(self, optimizer_fcn, kwargs={}):
-        if hasattr(self.model, 'module'):
+        if hasattr(self.model, "module"):
             self.optimizer = optimizer_fcn(
                 self.model.module.parameters(),
                 **self.optkwargs._asdict(),
@@ -119,26 +119,12 @@ class QuikTraveler:
             **kwargs,
         )
 
-    def add_state_dict(self, args, epoch):
-        sd_id = pq.utils.id_str("state_dict", args, epoch)
-        # ideally we'd save as *module*, but not working
-        # if self.is_ddp:
-        #     self.model.load_state_dict(
-        #         torch.load(sd_id, map_location=self.gpus.device)
-        #     )
-        # else:
-        state_dict = torch.load(sd_id, map_location=self.gpus.device)
-        ddp_state_dict = {
-            k.replace("module.", ""): v for k, v in state_dict.items()
-        }
-        self.model.load_state_dict(ddp_state_dict)
-
-    def add_model(self, model, args=None, epoch=None):
+    def add_model(self, model, state_dict=None):
         self.model = model
-        if args is not None:
-            self.add_state_dict(args, epoch)
+        if state_dict is not None:
+            self.model.load_state_dict(state_dict)
         self.model.to(self.gpus.device)
-        if args is None and self.is_ddp:
+        if self.is_ddp:
             self.model = DDP(
                 self.model,
                 device_ids=[self.gpus.device],
@@ -157,9 +143,6 @@ class QuikTraveler:
         else:
             loss.backward()
             self.optimizer.step()
-
-    # def add_amp(self):
-    #     self.amp = self.QuikAmp()
 
     class QuikData:
         def __init__(self, tensorDataset, gpus, is_ddp, dlkwargs, epochs):
@@ -206,7 +189,7 @@ class QuikTraveler:
             if clip:
                 self.scaler.unscale_(trvlr.optimizer)
                 # https://discuss.pytorch.org/t/about-torch-nn-utils-clip-grad-norm/13873
-                if hasattr(trvlr.model, 'module'):
+                if hasattr(trvlr.model, "module"):
                     clip_grad_norm_(trvlr.model.module.parameters(), 1.0)
                 else:
                     clip_grad_norm_(trvlr.model.parameters(), 1.0)
