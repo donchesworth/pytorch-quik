@@ -84,6 +84,7 @@ class QuikTraveler:
             betas=args.betas,
         )
         self.find_unused_parameters = args.find_unused_parameters
+        self.args.device = device
         self.dl = {}
         self.amp = self.QuikAmp(args.mixed_precision)
 
