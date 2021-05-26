@@ -66,12 +66,12 @@ def load_torch_object(
     Returns:
         Union[str, torch.Tensor]: [description]
     """
-    print("loading " + ttype + " " + str(args.device))
-    filename = id_str(ttype, args, epoch)
+    print("loading " + torch_type + " " + str(args.device))
+    filename = id_str(torch_type, args, epoch)
     if location:
         return filename
     pt = torch.load(filename)
-    if ttype == "state_dict":
+    if torch_type == "state_dict":
         # DDP will leave module artifacts to be removed
         pt = {k.replace("module.", ""): v for k, v in pt.items()}
     return pt
@@ -99,14 +99,14 @@ def load_tensor(
         return torch.load(file_id)
 
 
-def load_state_dict():
-    sd_id = pq.utils.id_str("state_dict", args, epoch)
-    state_dict = torch.load(sd_id, map_location=self.gpus.device)
-    # DDP will leave module artifacts to be removed
-    ddp_state_dict = {
-        k.replace("module.", ""): v for k, v in state_dict.items()
-    }
-    self.model.load_state_dict(ddp_state_dict)
+# def load_state_dict():
+#     sd_id = pq.utils.id_str("state_dict", args, epoch)
+#     state_dict = torch.load(sd_id, map_location=self.gpus.device)
+#     # DDP will leave module artifacts to be removed
+#     ddp_state_dict = {
+#         k.replace("module.", ""): v for k, v in state_dict.items()
+#     }
+#     self.model.load_state_dict(ddp_state_dict)
 
 
 def save_state_dict(model, args: Namespace, epoch: int):
