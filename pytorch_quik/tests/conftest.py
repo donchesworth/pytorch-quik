@@ -27,6 +27,7 @@ def args(gpus):
     args = Namespace()
     args.gpus = gpus
     args.data_date = 20210101
+    args.epochs = 2
     args.has_gpu = system("nvidia-smi -L") == 0
     if not args.has_gpu:
         warnings.warn(
@@ -41,7 +42,11 @@ def args(gpus):
     args.bs = 12
     args.num_workers = 0
     args.learning_rate = 5e-5
+    args.lr = 5e-5
+    args.eps = 1e-4
+    args.betas = (0.90, 0.99)
     args.weight_decay = 0
+    args.mixed_precision = True
     args.find_unused_parameters = False
     args.bert_type = "roberta"
     return args
