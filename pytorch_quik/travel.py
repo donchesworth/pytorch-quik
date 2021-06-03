@@ -5,9 +5,9 @@ from torch.nn.utils import clip_grad_norm_
 import torch.utils.data.distributed as ddist
 import torch.utils.data as td
 from torch import nn, optim
-from pytorch_quik import metrics, ddp
+from pytorch_quik import args, ddp, metrics
 from contextlib import nullcontext
-from argparse import Namespace
+from argparse import ArgumentParser, Namespace
 from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass, field, asdict
 
@@ -15,14 +15,16 @@ from dataclasses import dataclass, field, asdict
 @dataclass
 class World:
     """World related data."""
+
     device: torch.device = field(init=False)
-    node_id: int
-    total_nodes: int
-    gpu_id: int
-    total_gpus: int
+    node_id: int = 0
+    total_nodes: int = 1
+    gpu_id: int = None
+    total_gpus: int = None
     rank_id: int = field(init=False)
     world_size: int = field(init=False)
     is_ddp: bool = field(init=False)
+    is_logger: bool = field(init=False)
 
     def __post_init__(self):
         if self.gpu_id is None:
@@ -35,16 +37,19 @@ class World:
             self.rank_id = self.node_id * self.total_gpus + self.gpu_id
             self.world_size = self.total_gpus * self.total_nodes
             self.is_ddp = True
+        self.is_logger = not self.is_ddp
+        if self.gpu_id == 0:
+            self.is_logger = True
 
 
 @dataclass
 class DlKwargs:
     """Data loader keyword arguments."""
 
-    batch_size: int
-    shuffle: bool
-    pin_memory: bool
-    num_workers: int
+    batch_size: int = 24
+    shuffle: bool = False
+    pin_memory: bool = True
+    num_workers: int = 0
 
 
 @dataclass
@@ -61,34 +66,34 @@ class QuikTraveler:
     """A class for traversing a model either in training, validation, or
     testing. Is always a singular run - but can be part of a multi-GPU run.
     """
+
     metrics = metrics.LossMetrics(0.99)
 
-    def __init__(self, args: Namespace, gpu: Optional[int] = None):
-        self.args = args
-        self.epochs = args.epochs
-        self.world = World(args.nr, args.nodes, gpu, args.gpus)
-        self.is_logger = not self.world.is_ddp
-        if gpu == 0:
-            self.is_logger = True
+    def __init__(
+        self, argp: Optional[Namespace] = None, gpu: Optional[int] = None
+    ):
+        if argp is None:
+            parser = args.add_learn_args(ArgumentParser())
+            argp = parser.parse_args()
+        self.args = argp
+        self.epochs = argp.epochs
+        self.world = World(argp.nr, argp.nodes, gpu, argp.gpus)
         self.dlkwargs = DlKwargs(
-            batch_size=args.bs,
-            shuffle=False,
-            pin_memory=True,
-            num_workers=args.num_workers,
+            batch_size=argp.bs,
+            num_workers=argp.num_workers,
         )
         self.optkwargs = OptKwargs(
-            lr=args.lr,
-            weight_decay=args.weight_decay,
-            eps=args.eps,
-            betas=args.betas,
+            lr=argp.lr,
+            weight_decay=argp.weight_decay,
+            eps=argp.eps,
+            betas=argp.betas,
         )
-        self.find_unused_parameters = args.find_unused_parameters
+        self.find_unused_parameters = argp.find_unused_parameters
         self.args.device = self.world.device
-        self.is_ddp = self.world.is_ddp
         self.dl = {}
-        self.amp = QuikAmp(args.mixed_precision)
+        self.amp = QuikAmp(argp.mixed_precision)
 
-    def run_prep(self, args: Namespace):
+    def run_prep(self):
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
         if self.world.gpu_id is not None:
@@ -141,7 +146,7 @@ class QuikTraveler:
         if state_dict is not None:
             self.model.load_state_dict(state_dict)
         self.model.to(self.world.device)
-        if self.is_ddp:
+        if self.world.is_ddp:
             self.model = DDP(
                 self.model,
                 device_ids=[self.world.device],
@@ -151,7 +156,7 @@ class QuikTraveler:
 
     def add_data(self, tensorDataset: td.TensorDataset):
         self.data = QuikData(
-            tensorDataset, self.world, self.is_ddp, self.dlkwargs, self.epochs
+            tensorDataset, self.world, self.dlkwargs, self.epochs
         )
 
     def backward(self, loss: torch.Tensor, clip: Optional[bool] = True):
@@ -163,26 +168,24 @@ class QuikTraveler:
 
 
 class QuikData:
-    """A class for providing data to a traveler.
-    """
+    """A class for providing data to a traveler."""
+
     def __init__(
         self,
         tensorDataset: td.TensorDataset,
         world: World,
-        is_ddp: bool,
         dlkwargs: Dict[str, Any],
         epochs: int,
     ):
         self.dataset = tensorDataset
         self.labels = self.dataset.tensors[2].cpu().numpy()
-        self.is_ddp = is_ddp
         self.dlkwargs = dlkwargs
         self.add_data_loader(world)
         self.steps = len(self.data_loader)
         self.total_steps = self.steps * epochs
 
     def add_sampler(self, world, sampler_fcn=None, kwargs={}):
-        if self.is_ddp:
+        if world.is_ddp:
             self.sampler = ddist.DistributedSampler(
                 self.dataset,
                 num_replicas=world.world_size,
@@ -208,6 +211,7 @@ class QuikAmp:
     a nullcontext to your forward function if it's not being
     used.
     """
+
     def __init__(self, mixed_precision: bool):
         if mixed_precision:
             self.scaler = GradScaler()

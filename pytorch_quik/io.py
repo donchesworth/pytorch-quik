@@ -2,6 +2,7 @@ import torch
 from argparse import Namespace
 from typing import Optional, Union
 from pathlib import Path
+from datetime import date
 
 
 def id_str(
@@ -34,7 +35,8 @@ def id_str(
         suffix = ".csv"
     elif ftype != "model":
         ftype = ftype + "_tensor"
-    id_list = [ftype, lbls, epoch, str(args.data_date), gpu]
+    data_date = getattr(args, "data_date", date.today().strftime("%Y%m%d"))
+    id_list = [ftype, lbls, epoch, str(data_date), gpu]
     id_str = "_".join(filter(None, id_list))
     path_list = [
         "data",
