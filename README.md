@@ -7,7 +7,7 @@
 
 # pytorch-quik   <img src="pytorch-quik.png" align="right" width="120" />
 
-## For the quick-er distibution of neural nets in PyTorch
+## For the quick-er distribution of neural nets in PyTorch
 
 As I was building out the same set of code for a recommender system, a BERT sentiment model, and a co-worker was about to build a classification model, I decided to standardize the code into this package. It's lightweight, because I didn't want to hide the standard steps to keep the user from learning Neural Networks, but I also didn't want to maintain the code in multiple places.
 
