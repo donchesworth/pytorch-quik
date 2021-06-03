@@ -189,6 +189,8 @@ def train(args, gpu):
     tr.metrics.write()
     if tr.world.is_logger:
         print(tr.metrics.results)
+    if tr.world.is_ddp:
+        pq.ddp.cleanup()
 
 
 def main():
