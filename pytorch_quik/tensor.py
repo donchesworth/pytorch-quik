@@ -5,7 +5,7 @@ from transformers import BatchEncoding
 from argparse import Namespace
 import numpy as np
 import pandas as pd
-import pytorch_quik.utils as pu
+from pytorch_quik import io
 
 Tensor_Target = Union[str, np.ndarray]
 Tensor_Data = Union[pd.DataFrame, torch.Tensor, BatchEncoding]
@@ -51,7 +51,7 @@ def make_TensorDataset(
         ttar = torch.tensor(ttar.values)
         tds = td.TensorDataset(*tens, ttar)
     if args is not None:
-        tds_id = pu.id_str(ttype, args)
+        tds_id = io.id_str(ttype, args)
         torch.save(tds, tds_id)
     return tds
 
