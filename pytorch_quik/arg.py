@@ -153,4 +153,9 @@ def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         type=str,
         help="The tracking uri for mlflow (default is localhost, port 5000)",
     )
+    parser.add_argument(
+        "--endpoint_url",
+        default=kwargs.get("tracking_uri", "http://s3.amazonaws.com"),
+        help="The S3 endpoint where MLFlow will send your model artifacts",
+    )
     return parser

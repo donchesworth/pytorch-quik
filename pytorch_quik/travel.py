@@ -10,6 +10,7 @@ from contextlib import nullcontext
 from argparse import ArgumentParser, Namespace
 from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass, field, asdict, is_dataclass
+import os
 
 try:
     from mlflow.tracking import MlflowClient
@@ -102,6 +103,7 @@ class QuikTrek:
             self.mlflow = QuikMlflow(
                 args.experiment,
                 args.tracking_uri,
+                args.endpoint_url,
                 self.world,
                 self.dlkwargs,
                 self.optkwargs,
@@ -328,7 +330,17 @@ class QuikMlflow:
         os.environ["MLFLOW_S3_ENDPOINT_URL"] = ''
     """
 
-    def __init__(self, experiment, tracking_uri, world, dlkwargs, optkwargs):
+    def __init__(
+        self,
+        experiment,
+        tracking_uri,
+        endpoint_url,
+        world,
+        dlkwargs,
+        optkwargs,
+    ):
+        if "MLFLOW_S3_ENDPOINT_URL" not in os.environ:
+            os.environ["MLFLOW_S3_ENDPOINT_URL"] = endpoint_url
         self.client = MlflowClient(tracking_uri=tracking_uri)
         exp = self.client.get_experiment_by_name(experiment)
         if exp is None:
