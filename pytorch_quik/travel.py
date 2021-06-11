@@ -331,9 +331,10 @@ class QuikMlflow:
     def __init__(self, experiment, tracking_uri, world, dlkwargs, optkwargs):
         self.client = MlflowClient(tracking_uri=tracking_uri)
         exp = self.client.get_experiment_by_name(experiment)
-        self.expid = exp.experiment_id
-        if self.expid is None:
+        if exp is None:
             self.expid = self.client.create_experiment(experiment)
+        else:
+            self.expid = exp.experiment_id
         self.run = self.client.create_run(self.expid)
         self.runid = self.run.info.run_id
         self.log_parameters([world, dlkwargs, optkwargs])
