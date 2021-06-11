@@ -1,4 +1,4 @@
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score, confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import matplotlib.colors as mclr
 
@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from torch import Tensor
 import torch
+from pytorch_quik import io
+from pathlib import Path
 
 try:
     import cudf
@@ -78,6 +80,8 @@ def numpize_array(arr: ArrType) -> np.array:
     elif isinstance(arr, (pd.DataFrame, pd.Series)):
         arr = arr.to_numpy()
     elif isinstance(arr, torch.Tensor):
+        if arr.device.type == 'cuda':
+            arr = arr.cpu()
         arr = arr.numpy()
     if len(arr.shape) == 2:
         if arr.shape[1] == 1:
@@ -133,9 +137,12 @@ def matplotlib_gist_heat():
 
 
 def matplotlib_confusion_matrix(
-    conf_matrix: np.ndarray, dir_classes: OrderedDict[int, str]
+    conf_matrix: np.ndarray,
+    dir_classes: OrderedDict[int, str],
+    save_loc: Optional[Path] = Path.cwd(),
+    show_plot: Optional[bool] = False,
 ):
-    """Turn a confustion matrix into a matplotlib plot.
+    """Turn a confusion matrix into a matplotlib plot.
 
     Args:
         conf_matrix (np.ndarray): a 2d array of the confusion matrix
@@ -157,18 +164,38 @@ def matplotlib_confusion_matrix(
     ]
     plt.ylabel(LABELS[0])
     plt.xlabel(LABELS[1])
-    plt.show()
-    return plt
+    if show_plot:
+        plt.show()
+    plt.savefig(save_loc, bbox_inches="tight", dpi=150)
 
 
-def show_confusion_matrix(
+def pandas_confusion_matrix(
+    conf_matrix: np.ndarray,
+    dir_classes: OrderedDict[int, str],
+):
+    """Turn a confusion matrix into a matplotlib plot.
+
+    Args:
+        conf_matrix (np.ndarray): a 2d array of the confusion matrix
+        dirclasses (OrderedDict[int, str]): A list of chart labels for each
+            classification type
+    """
+    classes = dir_classes.values()
+    labels = [pd.MultiIndex.from_product([[lbl], classes]) for lbl in LABELS]
+    pdcm = pd.DataFrame(conf_mat, *labels)
+    return pdcm
+
+
+def build_confusion_matrix(
     preds_array: ArrType,
     true_array: ArrType,
     dir_classes: OrderedDict[int, str],
-    plot: Optional[bool] = False,
-):
+    save_loc: Optional[Path] = Path.cwd(),
+    show_plot: Optional[bool] = False,
+    in_pandas: Optional[bool] = False,
+) -> np.ndarray:
     """Takes either a 2d classification array or a 1d array and true
-    values, and creates a confusion matrix, either with seaborn or pandas.
+    values, and creates a confusion matrix, both with seaborn and pandas.
     Taken from https://stackoverflow.com/questions/65390832/
     set-meta-name-for-rows-and-columns-in-pandas-dataframe
 
@@ -183,15 +210,46 @@ def show_confusion_matrix(
     """
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
     conf_mat = confusion_matrix(tarr, parr)
-    if plot:
-        cm = matplotlib_confusion_matrix(conf_mat, dir_classes)
-    else:
-        classes = dir_classes.values()
-        labels = [
-            pd.MultiIndex.from_product([[lbl], classes]) for lbl in LABELS
-        ]
-        cm = pd.DataFrame(conf_mat, *labels)
-    return cm
+    matplotlib_confusion_matrix(conf_mat, dir_classes, save_loc, show_plot)
+    if in_pandas:
+        return pandas_confusion_matrix(conf_mat)
+    return conf_mat
+
+
+def build_class_dict(
+    preds_array: ArrType,
+    true_array: ArrType,
+    dir_classes: OrderedDict[int, str],
+    print_report: Optional[bool] = False,
+):
+    """Turn a confusion matrix into a classifcation report.
+
+    Args:
+        preds_array (ArrType): A 2d np.array to be argmaxed, a
+            pd.Series, or a 1d np.array
+        true_array (ArrType): A pd.Series or 1d np.array
+        dir_classes: OrderedDict[int, str]: A dict of index keys and
+            labels for each classification type
+    """
+    [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
+    tn = inverse_dict(dir_classes)
+    if print_report:
+        print(classification_report(tarr, parr, target_names=tn))
+    class_rpt = classification_report(
+        tarr, parr, target_names=tn, output_dict=True
+    )
+    wa = class_rpt["weighted avg"].copy()
+    class_rpt.pop("macro avg")
+    class_rpt.pop("weighted avg")
+    class_rpt.pop("accuracy")
+    {v.pop("support") for v in class_rpt.values()}
+    {v.pop("precision") for v in class_rpt.values()}
+    {v.pop("recall") for v in class_rpt.values()}
+    class_rpt["weighted_avg"] = wa
+    class_rpt = pd.json_normalize(class_rpt, sep="_").to_dict(
+        orient="records"
+    )[0]
+    return class_rpt
 
 
 class SmoothenLoss:
@@ -232,7 +290,7 @@ class LossMetrics:
         """
         self.beta = beta
         self.smoothener = SmoothenLoss(self.beta)
-        self.state_dict = {"epoch": 0, "train_loss": 0.0, "valid_loss": 0.0}
+        self.metric_dict = {"epoch": 0, "train_loss": 0.0, "valid_loss": 0.0}
         self.results = pd.DataFrame()
         self.start_time = time.time()
 
@@ -244,7 +302,8 @@ class LossMetrics:
         """
         loss = loss.float().detach().cpu().item()
         self.smoothener.add_value(loss)
-        self.state_dict["train_loss"] = self.smoothener.smooth
+        sss = self.smoothener.smooth
+        self.metric_dict["train_loss"] = sss
 
     def add_vloss(self, vlosses: List[Tensor], nums: List[int]):
         """Handle validation loss calculation
@@ -257,7 +316,7 @@ class LossMetrics:
         fl = (
             torch.stack(vlosses).data.cpu().numpy() * nums
         ).sum() / nums.sum()
-        self.state_dict["valid_loss"] = fl
+        self.metric_dict["valid_loss"] = fl
 
     def calc_time(self):
         """Add time to the metrics DataFrame"""
@@ -265,7 +324,7 @@ class LossMetrics:
         self.duration = (
             str(timedelta(seconds=elapsed)).split(".")[0].partition(":")[2]
         )
-        self.state_dict["time"] = self.duration
+        self.metric_dict["time"] = self.duration
 
     def write(self):
         """write out the metrics dataframe when completed"""
@@ -274,8 +333,8 @@ class LossMetrics:
             [
                 self.results,
                 pd.DataFrame(
-                    self.state_dict, index=[self.state_dict["epoch"]]
+                    self.metric_dict, index=[self.metric_dict["epoch"]]
                 ),
             ]
         )
-        self.state_dict["epoch"] += 1
+        self.metric_dict["epoch"] += 1

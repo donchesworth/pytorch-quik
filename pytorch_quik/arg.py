@@ -18,7 +18,7 @@ def beta_type(strings: str) -> tuple:
 
 def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     """Add learn args will add arguments that are common to PyTorch, and
-    necessary for a pytorch-quik traveller. These can be set by command
+    necessary for a pytorch-quik traveler. These can be set by command
     line, or can be defaulted in a script, or the defaults here can be
     used.
 
@@ -32,6 +32,21 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     Returns:
         ArgumentParser: The same ArgumentParser but with loaded learning args.
     """
+    parser.add_argument(
+        "-e",
+        "--epochs",
+        default=kwargs.get("epochs", 5),
+        type=int,
+        metavar="N",
+        help="number of total epochs to run (2, 3, 5)",
+    )    
+    parser.add_argument(
+        "-nr",
+        "--nr",
+        default=0,
+        type=int,
+        help="ranking within the nodes",
+    )
     parser.add_argument(
         "-n",
         "--nodes",
@@ -52,21 +67,6 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         "--mixed_precision",
         action="store_true",
         default=True,
-    )
-    parser.add_argument(
-        "-nr",
-        "--nr",
-        default=0,
-        type=int,
-        help="ranking within the nodes",
-    )
-    parser.add_argument(
-        "-e",
-        "--epochs",
-        default=kwargs.get("epochs", 5),
-        type=int,
-        metavar="N",
-        help="number of total epochs to run (2, 3, 5)",
     )
     parser.add_argument(
         "-bs",
@@ -115,5 +115,42 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         "--find_unused_parameters",
         dest="find_unused_parameters",
         action="store_true",
+    )
+    return parser
+
+
+def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
+    """Add mlflow args will add arguments that are common to mlflow, and
+    necessary for a pytorch-quik traveler. These can be set by command
+    line, or can be defaulted in a script, or the defaults here can be
+    used.
+
+    Args:
+        parser (ArgumentParser): This is the parser from the PyTorch project.
+        kwargs (dict, optional): Sometimes the individual project will want
+        to have default learning args. For instance, learning rate could be
+        set at the command line, if not by the PyTorch project, or if not it
+        will be set here. If they are all set here, then kwargs defaults to {}.
+
+    Returns:
+        ArgumentParser: The same ArgumentParser but with loaded mlflow args.
+    """
+    parser.add_argument(
+        "--use_mlflow",
+        dest="use_mlflow",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-exp",
+        "--experiment",
+        default=kwargs.get("experiment", "Default"),
+        type=str,
+        help="The name of the mlflow experiment (default is Default)",
+    )
+    parser.add_argument(
+        "--tracking_uri",
+        default=kwargs.get("tracking_uri", "http://localhost:5000"),
+        type=str,
+        help="The tracking uri for mlflow (default is localhost, port 5000)",
     )
     return parser

@@ -1,4 +1,4 @@
-import pytorch_quik.args
+import pytorch_quik.arg
 import pytorch_quik.ddp
 import pytorch_quik.io
 import pytorch_quik.metrics
@@ -8,7 +8,7 @@ import pytorch_quik.travel
 import pytorch_quik.utils
 
 __all__ = [
-    "args",
+    "arg",
     "io",
     "ddp",
     "metrics",

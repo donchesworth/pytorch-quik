@@ -5,11 +5,16 @@ from torch.nn.utils import clip_grad_norm_
 import torch.utils.data.distributed as ddist
 import torch.utils.data as td
 from torch import nn, optim
-from pytorch_quik import args, ddp, metrics
+from pytorch_quik import arg, ddp, io, metrics
 from contextlib import nullcontext
 from argparse import ArgumentParser, Namespace
 from typing import Any, Callable, Dict, Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, is_dataclass
+
+try:
+    from mlflow.tracking import MlflowClient
+except ImportError:
+    pass
 
 
 @dataclass
@@ -62,6 +67,52 @@ class OptKwargs:
     betas: tuple
 
 
+class QuikTrek:
+    """A class for maintaining the general data for the full trek to
+    be shared between travelers.
+    """
+
+    def __init__(
+        self, args: Optional[Namespace] = None, gpu: Optional[int] = None
+    ):
+        if args is None:
+            parser = arg.add_learn_args(ArgumentParser())
+            args = parser.parse_args()
+        self.args = args
+        self.epochs = args.epochs
+        self.create_dataclasses(args, gpu)
+        self.trek_prep(args)
+
+    def create_dataclasses(self, args, gpu):
+        self.world = World(args.nr, args.nodes, gpu, args.gpus)
+        self.dlkwargs = DlKwargs(
+            batch_size=args.bs,
+            num_workers=args.num_workers,
+        )
+        self.optkwargs = OptKwargs(
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            eps=args.eps,
+            betas=args.betas,
+        )
+        self.args.device = self.world.device
+
+    def trek_prep(self, args):
+        if args.use_mlflow:
+            self.mlflow = QuikMlflow(
+                args.experiment,
+                args.tracking_uri,
+                self.world,
+                self.dlkwargs,
+                self.optkwargs,
+            )
+        if self.world.device.type == "cuda":
+            torch.cuda.empty_cache()
+        if self.world.gpu_id is not None:
+            torch.cuda.set_device(self.world.device)
+            ddp.setup(self.world.gpu_id, self.world)
+
+
 class QuikTraveler:
     """A class for traversing a model either in training, validation, or
     testing. Is always a singular run - but can be part of a multi-GPU run.
@@ -69,36 +120,13 @@ class QuikTraveler:
 
     metrics = metrics.LossMetrics(0.99)
 
-    def __init__(
-        self, argp: Optional[Namespace] = None, gpu: Optional[int] = None
-    ):
-        if argp is None:
-            parser = args.add_learn_args(ArgumentParser())
-            argp = parser.parse_args()
-        self.args = argp
-        self.epochs = argp.epochs
-        self.world = World(argp.nr, argp.nodes, gpu, argp.gpus)
-        self.dlkwargs = DlKwargs(
-            batch_size=argp.bs,
-            num_workers=argp.num_workers,
-        )
-        self.optkwargs = OptKwargs(
-            lr=argp.lr,
-            weight_decay=argp.weight_decay,
-            eps=argp.eps,
-            betas=argp.betas,
-        )
-        self.find_unused_parameters = argp.find_unused_parameters
-        self.args.device = self.world.device
-        self.dl = {}
-        self.amp = QuikAmp(argp.mixed_precision)
-
-    def run_prep(self):
-        if self.world.device.type == "cuda":
-            torch.cuda.empty_cache()
-        if self.world.gpu_id is not None:
-            torch.cuda.set_device(self.world.device)
-            ddp.setup(self.world.gpu_id, self.world)
+    def __init__(self, trek, type: Optional[str] = None):
+        self.type = type
+        self.world = trek.world
+        self.args = trek.args
+        self.trek = trek
+        self.find_unused_parameters = trek.args.find_unused_parameters
+        self.amp = QuikAmp(trek.args.mixed_precision)
 
     def set_criterion(
         self,
@@ -117,13 +145,13 @@ class QuikTraveler:
         if hasattr(self.model, "module"):
             self.optimizer = optimizer_fcn(
                 self.model.module.parameters(),
-                **asdict(self.optkwargs),
+                **asdict(self.trek.optkwargs),
                 **kwargs,
             )
         else:
             self.optimizer = optimizer_fcn(
                 self.model.parameters(),
-                **asdict(self.optkwargs),
+                **asdict(self.trek.optkwargs),
                 **kwargs,
             )
 
@@ -156,15 +184,64 @@ class QuikTraveler:
 
     def add_data(self, tensorDataset: td.TensorDataset):
         self.data = QuikData(
-            tensorDataset, self.world, self.dlkwargs, self.epochs
+            tensorDataset, self.world, self.trek.dlkwargs, self.trek.epochs
         )
+        if self.type == "train":
+            self.metrics.steps = self.data.steps
 
     def backward(self, loss: torch.Tensor, clip: Optional[bool] = True):
         if hasattr(self.amp, "scaler"):
             self.amp.backward(self, loss, clip)
         else:
             loss.backward()
-            self.optimizer.step()
+            if hasattr(self.amp, "optimizer"):
+                self.optimizer.step()
+
+    def add_loss(self, loss, step, epoch):
+        self.metrics.add_loss(loss)
+        if self.args.use_mlflow:
+            loss = self.metrics.metric_dict["train_loss"]
+            step = step + (self.metrics.steps * epoch)
+            self.trek.mlflow.log_metric("train_loss", loss, step)
+
+    def add_vloss(self, vlosses, nums, epoch):
+        self.metrics.add_vloss(vlosses, nums)
+        if self.args.use_mlflow:
+            vloss = self.metrics.metric_dict["valid_loss"]
+            step = self.metrics.steps * (epoch + 1)
+            print(epoch)
+            print(step)
+            self.trek.mlflow.log_metric("valid_loss", vloss, step)
+
+    def save_state_dict(self, epoch):
+        sd_id = io.save_state_dict(self.model, self.args, epoch)
+        if self.args.use_mlflow:
+            self.trek.mlflow.log_artifact(str(sd_id))
+
+    def record_results(
+        self,
+        label_names,
+        accuracy: Optional[bool] = True,
+        f1: Optional[bool] = True,
+        confusion: Optional[bool] = True,
+    ):
+        cm_id = io.id_str("confusion", self.args)
+        self.cm = metrics.build_confusion_matrix(
+            self.data.predictions,
+            self.data.labels,
+            label_names,
+            cm_id,
+        )
+        cr = metrics.build_class_dict(
+            self.data.predictions,
+            self.data.labels,
+            label_names,
+        )
+        self.trek.mlflow.log_artifact(cm_id)
+        {
+            self.trek.mlflow.log_metric(metric, value, 0)
+            for metric, value in cr.items()
+        }
 
 
 class QuikData:
@@ -205,6 +282,10 @@ class QuikData:
             **asdict(self.dlkwargs),
         )
 
+    def add_results(self, predictions: torch.Tensor, labels: torch.Tensor):
+        self.predictions = predictions
+        self.labels = labels
+
 
 class QuikAmp:
     """A class to manage automatic mixed precision. Provides
@@ -236,3 +317,41 @@ class QuikAmp:
                 clip_grad_norm_(trvlr.model.parameters(), 1.0)
         self.scaler.step(trvlr.optimizer)
         self.scaler.update()
+
+
+class QuikMlflow:
+    """A class to manage MLflow API calls. You'll have to add your own
+    credentials either to ~/.aws/credentials, or store them in environment
+    variables like:
+        os.environ["AWS_ACCESS_KEY_ID"] = ''
+        os.environ["AWS_SECRET_ACCESS_KEY"] = ''
+        os.environ["MLFLOW_S3_ENDPOINT_URL"] = ''
+    """
+
+    def __init__(self, experiment, tracking_uri, world, dlkwargs, optkwargs):
+        self.client = MlflowClient(tracking_uri=tracking_uri)
+        exp = self.client.get_experiment_by_name(experiment)
+        self.expid = exp.experiment_id
+        if self.expid is None:
+            self.expid = self.client.create_experiment(experiment)
+        self.run = self.client.create_run(self.expid)
+        self.runid = self.run.info.run_id
+        self.log_parameters([world, dlkwargs, optkwargs])
+
+    def log_parameters(self, dclasses):
+        for dclass in dclasses:
+            if is_dataclass(dclass):
+                dclass = asdict(dclass)
+            _ = [
+                self.client.log_param(self.runid, k, v)
+                for k, v in dclass.items()
+            ]
+
+    def log_metric(self, key, metric, step):
+        self.client.log_metric(self.runid, key, metric, step=step)
+
+    def log_artifact(self, sd_id):
+        self.client.log_artifact(self.runid, str(sd_id))
+
+    def end_run(self):
+        self.client.set_terminated(self.runid)

@@ -33,6 +33,8 @@ def id_str(
         epoch = "e" + str(epoch)
     elif ftype == "preds":
         suffix = ".csv"
+    elif ftype == "confusion":
+        suffix = ".png"
     elif ftype != "model":
         ftype = ftype + "_tensor"
     data_date = getattr(args, "data_date", date.today().strftime("%Y%m%d"))
@@ -119,3 +121,4 @@ def save_state_dict(model, args: Namespace, epoch: int):
     else:
         sd = model.state_dict()
     torch.save(sd, sd_id)
+    return sd_id
