@@ -2,6 +2,7 @@ import pytorch_quik.arg
 import pytorch_quik.ddp
 import pytorch_quik.io
 import pytorch_quik.metrics
+import pytorch_quik.serve
 import pytorch_quik.tensor
 import pytorch_quik.transform
 import pytorch_quik.travel
@@ -12,6 +13,7 @@ __all__ = [
     "io",
     "ddp",
     "metrics",
+    "serve",
     "tensor",
     "transform",
     "travel",

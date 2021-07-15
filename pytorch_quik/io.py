@@ -3,6 +3,7 @@ from argparse import Namespace
 from typing import Optional, Union
 from pathlib import Path
 from datetime import date
+import json
 
 
 def id_str(
@@ -70,7 +71,8 @@ def load_torch_object(
     Returns:
         Union[str, torch.Tensor]: [description]
     """
-    print("loading " + torch_type + " " + str(args.device))
+
+    print("loading " + torch_type + " " + str(getattr(args, "device", "cpu")))
     filename = id_str(torch_type, args, epoch)
     if location:
         return filename
@@ -122,3 +124,9 @@ def save_state_dict(model, args: Namespace, epoch: int):
         sd = model.state_dict()
     torch.save(sd, sd_id)
     return sd_id
+
+
+def json_write(serve_path, filename, data):
+    file = Path.joinpath(serve_path, filename)
+    with open(file, 'w') as outfile:
+        json.dump(data, outfile)
