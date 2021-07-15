@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mclr
 
 # from collections import OrderedDict
-from typing import Union, Optional, List, Dict, Tuple, OrderedDict
+from typing import Union, Optional, List, OrderedDict
 import time
 from datetime import timedelta
 import numpy as np
 import pandas as pd
 from torch import Tensor
 import torch
-from pytorch_quik import io
+from pytorch_quik import utils
 from pathlib import Path
 
 try:
@@ -22,34 +22,6 @@ ArrType = Union[
     np.ndarray, pd.Series, pd.DataFrame, cudf.DataFrame, torch.Tensor
 ]
 LABELS = ["Actual", "Predicted"]
-
-
-def direct_dict(classes: Tuple[str]) -> OrderedDict[int, str]:
-    """Create an ordered dict of classes with indices as keys
-
-    Args:
-        classes (Tuple[str]): A list of classes
-
-    Returns:
-        OrderedDict[int, str]: A final ordered dict
-    """
-    class_keys = range(len(classes))
-    return OrderedDict(zip(class_keys, classes))
-
-
-def inverse_dict(
-    dict_direct: Union[Dict, OrderedDict]
-) -> OrderedDict[str, int]:
-    """invert a dictionary
-
-    Args:
-        dict_direct (Union[Dict, OrderedDict]): the original
-            dictionary to be inverted
-    Returns:
-        OrderedDict[str, int]: The inverted ordered dictionary
-    """
-    dict_inverse = {v: k for k, v in dict_direct.items()}
-    return OrderedDict(dict_inverse)
 
 
 def choose_a_class(preds_array: ArrType) -> ArrType:
@@ -232,19 +204,17 @@ def build_class_dict(
             labels for each classification type
     """
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
-    tn = inverse_dict(dir_classes)
+    tn = utils.inverse_dict(dir_classes)
     if print_report:
         print(classification_report(tarr, parr, target_names=tn))
     class_rpt = classification_report(
         tarr, parr, target_names=tn, output_dict=True
     )
     wa = class_rpt["weighted avg"].copy()
-    class_rpt.pop("macro avg")
-    class_rpt.pop("weighted avg")
-    class_rpt.pop("accuracy")
-    {v.pop("support") for v in class_rpt.values()}
-    {v.pop("precision") for v in class_rpt.values()}
-    {v.pop("recall") for v in class_rpt.values()}
+    poprows = ["accuracy", "macro avg", "weighted avg"]
+    [class_rpt.pop(key) for key in poprows]
+    popcols = ["precision", "recall", "support"]
+    [v.pop(col) for col in popcols for v in class_rpt.values()]
     class_rpt["weighted_avg"] = wa
     class_rpt = pd.json_normalize(class_rpt, sep="_").to_dict(
         orient="records"

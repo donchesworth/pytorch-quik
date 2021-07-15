@@ -211,8 +211,6 @@ class QuikTraveler:
         if self.args.use_mlflow:
             vloss = self.metrics.metric_dict["valid_loss"]
             step = self.metrics.steps * (epoch + 1)
-            print(epoch)
-            print(step)
             self.trek.mlflow.log_metric("valid_loss", vloss, step)
 
     def save_state_dict(self, epoch):
