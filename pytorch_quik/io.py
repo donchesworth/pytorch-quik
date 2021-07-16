@@ -4,6 +4,7 @@ from typing import Optional, Union
 from pathlib import Path
 from datetime import date
 import json
+import numpy as np
 
 
 def id_str(
@@ -36,6 +37,8 @@ def id_str(
         suffix = ".csv"
     elif ftype == "confusion":
         suffix = ".png"
+    elif ftype == "test_array":
+        suffix = ".npy"
     elif ftype != "model":
         ftype = ftype + "_tensor"
     data_date = getattr(args, "data_date", date.today().strftime("%Y%m%d"))
@@ -124,6 +127,21 @@ def save_state_dict(model, args: Namespace, epoch: int):
         sd = model.state_dict()
     torch.save(sd, sd_id)
     return sd_id
+
+
+def save_test_array(Xte: np.array, yte: np.array, args: Namespace):
+    filename = id_str("test_array", args)
+    with open(filename, 'wb') as f:
+        np.save(f, Xte)
+        np.save(f, yte)
+
+
+def load_test_array(args):
+    filename = id_str("test_array", args)
+    with open(filename, 'rb') as f:
+        Xte = np.load(f, allow_pickle=True)
+        yte = np.load(f, allow_pickle=True)
+    return Xte, yte
 
 
 def json_write(serve_path, filename, data):
