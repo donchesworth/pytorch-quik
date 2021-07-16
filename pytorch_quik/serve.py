@@ -10,8 +10,10 @@ from urllib.parse import urlparse
 
 EXTRA_FILES = [
     "config.json",
+    "setup_config.json",
     "index_to_name.json",
     "tokenizer_config.json",
+    "tokenizer.json",
     "special_tokens_map.json",
     "vocab.txt",
 ]
@@ -161,7 +163,7 @@ def create_mar(
         model_dir = Path(io.id_str("", args)).parent.joinpath("serve")
     xfiles = ",./".join(shlex.quote(x) for x in EXTRA_FILES)
     if model_name is None:
-        model_name = args.experiment
+        model_name = args.experiment.replace("-", "_")
     if serialized_file is None:
         serialized_file = "pytorch_model.bin"
     if mar_files(model_dir, serialized_file, handler):
@@ -174,4 +176,6 @@ def create_mar(
             --extra-files "./{xfiles}"
             --export-path={model_dir}
         """
-        subprocess.Popen(shlex.split(cmd), cwd=model_dir)
+        sp = subprocess.Popen(shlex.split(cmd), cwd=model_dir)
+        sp.communicate()
+        print(f"torch archive {model_name}.mar created")
