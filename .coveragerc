@@ -1,3 +1,5 @@
 [run]
 source = pytorch_quik
-omit = *tests*
+omit =
+    *tests*
+    handler/*
