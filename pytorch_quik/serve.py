@@ -77,9 +77,10 @@ def save_handler(serve_path, url: Optional[str] = None):
     if url is None:
         url = urlparse("https://raw.githubusercontent.com")
         handler_loc = Path(
-            "pytorch/serve/master/" "examples",
-            "Huggingface_Transformers",
-            "Transformer_handler_generalized.py",
+            "donchesworth/pytorch-quik/main/",
+            "pytorch_quik",
+            "handler",
+            "transformer_handler_pq.py",
         )
         url = url._replace(path=str(handler_loc))
     filename = Path(serve_path).joinpath(handler_loc.name)
@@ -140,9 +141,8 @@ def create_mar(
     model_dir: Optional[Path] = None,
     model_name: Optional[str] = None,
     version: Optional[float] = 1.0,
-    # model_file: Optional[str] = "./model.py",
     serialized_file: Optional[str] = None,
-    handler: Optional[str] = "Transformer_handler_generalized.py",
+    handler: Optional[str] = "transformer_handler_pq.py",
 ):
     """build a torch-model-archive file using
     https://github.com/pytorch/serve/tree/master/model-archiver
@@ -157,7 +157,7 @@ def create_mar(
         serialized_file (str, optional): the model output of save_pretrained().
         Defaults to None.
         handler (str, optional): the serving handler file.
-        Defaults to "Transformer_handler_generalized.py".
+        Defaults to "transformer_handler_pq.py".
     """
     if model_dir is None:
         model_dir = Path(io.id_str("", args)).parent.joinpath("serve")
