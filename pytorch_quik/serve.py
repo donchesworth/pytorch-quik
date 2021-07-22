@@ -161,6 +161,8 @@ def create_mar(
     """
     if model_dir is None:
         model_dir = Path(io.id_str("", args)).parent.joinpath("serve")
+    export_dir = model_dir.joinpath("mar")
+    export_dir.mkdir(parents=True, exist_ok=True)
     xfiles = ",./".join(shlex.quote(x) for x in EXTRA_FILES)
     if model_name is None:
         model_name = args.experiment.replace("-", "_")
@@ -174,7 +176,7 @@ def create_mar(
             --serialized-file=./{serialized_file}
             --handler=./{handler}
             --extra-files "./{xfiles}"
-            --export-path={model_dir}
+            --export-path={export_dir}
         """
         sp = subprocess.Popen(shlex.split(cmd), cwd=model_dir)
         sp.communicate()

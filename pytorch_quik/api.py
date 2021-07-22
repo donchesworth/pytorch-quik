@@ -6,7 +6,9 @@ from typing import List, OrderedDict
 from multiprocessing.connection import Connection
 import pandas as pd
 import numpy as np
+from math import ceil
 import json
+from pandas.io.json import json_normalize
 
 URL = "http://deepshadow.gsslab.rdu2.redhat.com:8080/predictions/my_tc"
 JSON_HEADER = {"Content-Type": "application/json"}
@@ -17,7 +19,7 @@ def requests_session() -> Session:
         total=3,
         backoff_factor=1,
         status_forcelist=[507],
-        method_whitelist=["POST"]
+        method_whitelist=["POST"],
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
     sesh = Session()
@@ -26,22 +28,23 @@ def requests_session() -> Session:
 
 
 def request_post(data: str, sesh: Session, conn: Connection, num: int):
-    r = sesh.post(URL, data=bytes(data, 'utf-8'), headers=JSON_HEADER)
+    r = sesh.post(URL, data=bytes(data, "utf-8"), headers=JSON_HEADER)
     print(f"{num} status_code: {r.status_code}")
     conn.send(r)
 
 
 def split_and_format(arr: np.array, length: int) -> List[List[str]]:
-    splits = int(len(arr)/length)
+    splits = ceil(len(arr) / length)
     arr_list = np.array_split(arr.flatten(), splits)
-    data_list = [f'{{"instances":{json.dumps([{"data": text} for text in arr])}}}' for arr in arr_list]
+    data_list = [
+        f'{{"instances":{json.dumps([{"data": text} for text in arr])}}}'
+        for arr in arr_list
+    ]
     return data_list
 
 
 def batch_inference(
-    responses: np.array,
-    indexed_labels: OrderedDict,
-    batch_size: int
+    responses: np.array, indexed_labels: OrderedDict, batch_size: int
 ) -> pd.DataFrame:
     data_list = split_and_format(responses, batch_size)
     processes = []
@@ -50,23 +53,13 @@ def batch_inference(
     for num, batch in enumerate(data_list):
         output_pipe, input_pipe = mp.Pipe(duplex=False)
         proc = mp.Process(
-            target=request_post,
-            args=(batch, sesh, input_pipe, num)
+            target=request_post, args=(batch, sesh, input_pipe, num)
         )
         processes.append(proc)
         r_list.append(output_pipe)
         proc.start()
     [proc.join() for proc in processes]
-    r_list = [r.recv().json()['predictions'] for r in r_list]
-    rdf = responses_to_df(r_list, indexed_labels)
-    return rdf
-
-
-def responses_to_df(r: List[List[str]], idx_lbls: OrderedDict) -> pd.DataFrame:
-    ddf = pd.DataFrame.from_dict(
-        idx_lbls,
-        orient='index').reset_index()
-    rdf = pd.DataFrame(np.concatenate(r, axis=0))
-    rdf = rdf.merge(ddf, how='left')
-    rdf.columns = ['target', 'preds']
-    return rdf
+    r_list = [
+        json_normalize(r.recv().json()["predictions"], sep="_") for r in r_list
+    ]
+    return pd.concat(r_list, ignore_index=True)
