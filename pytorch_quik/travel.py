@@ -102,6 +102,7 @@ class QuikTrek:
         if args.use_mlflow:
             self.mlflow = QuikMlflow(
                 args.experiment,
+                args.user,
                 args.tracking_uri,
                 args.endpoint_url,
                 self.world,
@@ -331,6 +332,7 @@ class QuikMlflow:
     def __init__(
         self,
         experiment,
+        user,
         tracking_uri,
         endpoint_url,
         world,
@@ -347,6 +349,7 @@ class QuikMlflow:
             self.expid = exp.experiment_id
         self.run = self.client.create_run(self.expid)
         self.runid = self.run.info.run_id
+        self.client.set_tag(self.runid, "mlflow.user", user)
         self.log_parameters([world, dlkwargs, optkwargs])
 
     def log_parameters(self, dclasses):
