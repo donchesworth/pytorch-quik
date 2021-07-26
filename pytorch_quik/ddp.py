@@ -44,12 +44,12 @@ def ddp_traverse(train_fn: Callable, args: Namespace):
     mp.spawn(train_fn, args=(args,), nprocs=args.gpus)
 
 
-def setup(gpu: str, args: Union[Namespace, NamedTuple]):
+def setup(args: Union[Namespace, NamedTuple], gpu: str):
     """Setup of the distrubtion settings.
 
     Args:
-        gpu (str): The current gpu
         args (Union[Namespace, NamedTuple]): The gpu parameters
+        gpu (str): The current gpu
     """
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
@@ -80,9 +80,9 @@ def consume_prefix_in_state_dict_if_present(
 ):
     r"""Strip the prefix in state_dict, if any.
     ..note::
-        Given a `state_dict` from a DP/DDP model, a local model can load it by applying
-        `consume_prefix_in_state_dict_if_present(state_dict, "module.")` before calling
-        :meth:`torch.nn.Module.load_state_dict`.
+        Given a `state_dict` from a DP/DDP model, a local model can load it by
+        applying `consume_prefix_in_state_dict_if_present(state_dict,
+        "module.")` before calling :meth:`torch.nn.Module.load_state_dict`.
     Args:
         state_dict (OrderedDict): a state-dict to be loaded to the model.
         prefix (str): prefix.
