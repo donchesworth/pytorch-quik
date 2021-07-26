@@ -82,10 +82,10 @@ class QuikTrek:
             args = parser.parse_args()
         self.args = args
         self.epochs = args.epochs
-        self.create_dataclasses(args, gpu)
+        self.create_dataclasses(gpu, args)
         self.trek_prep(args)
 
-    def create_dataclasses(self, args, gpu):
+    def create_dataclasses(self, gpu, args):
         self.world = World(args.nr, args.nodes, gpu, args.gpus)
         self.dlkwargs = DlKwargs(
             batch_size=args.bs,

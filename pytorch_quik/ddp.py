@@ -29,7 +29,7 @@ def traverse(train_fn: Callable, args: Namespace):
     if bool(dq.utils.gpus()):
         ddp_traverse(train_fn, args)
     else:
-        train_fn(args=args, gpu=None)
+        train_fn(gpu=None, args=args)
 
 
 def ddp_traverse(train_fn: Callable, args: Namespace):
@@ -41,20 +41,20 @@ def ddp_traverse(train_fn: Callable, args: Namespace):
         Neural Network
         args (Namespace): The argparse Namespace for this script
     """
-    mp.spawn(train_fn, args=(args,), nprocs=args.gpus)
+    os.environ["MKL_THREADING_LAYER"] = "GNU"
+    mp.spawn(train_fn, nprocs=args.gpus, args=(args,))
 
 
-def setup(args: Union[Namespace, NamedTuple], gpu: str):
+def setup(gpu: str, args: Union[Namespace, NamedTuple]):
     """Setup of the distrubtion settings.
 
     Args:
-        args (Union[Namespace, NamedTuple]): The gpu parameters
         gpu (str): The current gpu
+        args (Union[Namespace, NamedTuple]): The gpu parameters
     """
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
     os.environ["NCCL_P2P_LEVEL"] = "0"
-    os.environ["MKL_THREADING_LAYER"] = "GNU"
 
     dist.init_process_group(
         backend="nccl",
