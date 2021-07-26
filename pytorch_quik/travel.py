@@ -74,8 +74,9 @@ class QuikTrek:
     """
 
     def __init__(
-        self, args: Optional[Namespace] = None, gpu: Optional[int] = None
+        self, gpu: Optional[int] = None, args: Optional[Namespace] = None
     ):
+        print(args)
         if args is None:
             parser = arg.add_learn_args(ArgumentParser())
             args = parser.parse_args()
