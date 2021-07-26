@@ -163,7 +163,7 @@ def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     )
     parser.add_argument(
         "--endpoint_url",
-        default=kwargs.get("tracking_uri", "http://s3.amazonaws.com"),
+        default=kwargs.get("endpoint_url", "http://s3.amazonaws.com"),
         help="The S3 endpoint where MLFlow will send your model artifacts",
     )
     return parser

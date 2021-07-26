@@ -11,6 +11,7 @@ from argparse import ArgumentParser, Namespace
 from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass, field, asdict, is_dataclass
 import os
+from tqdm import tqdm
 
 try:
     from mlflow.tracking import MlflowClient
@@ -201,11 +202,11 @@ class QuikTraveler:
             if hasattr(self.amp, "optimizer"):
                 self.optimizer.step()
 
-    def add_loss(self, loss, step, epoch):
+    def add_loss(self, loss: torch.Tensor, pbar: tqdm, epoch: int):
         self.metrics.add_loss(loss)
-        if self.args.use_mlflow:
+        if self.args.use_mlflow and pbar is not None:
             loss = self.metrics.metric_dict["train_loss"]
-            step = step + (self.metrics.steps * epoch)
+            step = pbar.n + (self.metrics.steps * epoch)
             self.trek.mlflow.log_metric("train_loss", loss, step)
 
     def add_vloss(self, vlosses, nums, epoch):
@@ -234,7 +235,7 @@ class QuikTraveler:
             label_names,
             cm_id,
         )
-        cr = metrics.build_class_dict(
+        self.cr = metrics.build_class_dict(
             self.data.predictions,
             self.data.labels,
             label_names,
@@ -242,7 +243,7 @@ class QuikTraveler:
         self.trek.mlflow.log_artifact(cm_id)
         {
             self.trek.mlflow.log_metric(metric, value, 0)
-            for metric, value in cr.items()
+            for metric, value in self.cr.items()
         }
 
 
