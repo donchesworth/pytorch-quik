@@ -54,6 +54,7 @@ def setup(gpu: str, args: Union[Namespace, NamedTuple]):
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
     os.environ["NCCL_P2P_LEVEL"] = "0"
+    os.environ["MKL_THREADING_LAYER"] = "GNU"
 
     dist.init_process_group(
         backend="nccl",
