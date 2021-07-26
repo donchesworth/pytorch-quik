@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import dask_quik as dq
+from os import popen
 
 
 def beta_type(strings: str) -> tuple:
@@ -144,6 +145,13 @@ def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         "-exp",
         "--experiment",
         default=kwargs.get("experiment", "Default"),
+        type=str,
+        help="The name of the mlflow experiment (default is Default)",
+    )
+    parser.add_argument(
+        "-u",
+        "--user",
+        default=kwargs.get("user", popen('whoami').read().strip()),
         type=str,
         help="The name of the mlflow experiment (default is Default)",
     )

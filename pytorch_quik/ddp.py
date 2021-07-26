@@ -29,7 +29,7 @@ def traverse(train_fn: Callable, args: Namespace):
     if bool(dq.utils.gpus()):
         ddp_traverse(train_fn, args)
     else:
-        train_fn(gpu=None, args=args)
+        train_fn(args=args, gpu=None)
 
 
 def ddp_traverse(train_fn: Callable, args: Namespace):
@@ -41,7 +41,7 @@ def ddp_traverse(train_fn: Callable, args: Namespace):
         Neural Network
         args (Namespace): The argparse Namespace for this script
     """
-    mp.spawn(train_fn, nprocs=args.gpus, args=(args,))
+    mp.spawn(train_fn, args=(args,), nprocs=args.gpus)
 
 
 def setup(gpu: str, args: Union[Namespace, NamedTuple]):
