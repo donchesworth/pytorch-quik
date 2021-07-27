@@ -28,6 +28,8 @@ class World:
     total_nodes: int = 1
     gpu_id: int = None
     total_gpus: int = None
+    trial_id: int = None
+    master_port: int = field(init=False)
     rank_id: int = field(init=False)
     world_size: int = field(init=False)
     is_ddp: bool = field(init=False)
@@ -36,11 +38,13 @@ class World:
     def __post_init__(self):
         if self.gpu_id is None:
             self.device = torch.device("cpu")
+            self.master_port = None
             self.rank_id = None
             self.world_size = None
             self.is_ddp = False
         else:
             self.device = torch.device("cuda", self.gpu_id)
+            self.master_port = 12355 + self.total_gpus * self.trial_id
             self.rank_id = self.node_id * self.total_gpus + self.gpu_id
             self.world_size = self.total_gpus * self.total_nodes
             self.is_ddp = True
@@ -75,9 +79,9 @@ class QuikTrek:
     """
 
     def __init__(
-        self, gpu: Optional[int] = None, args: Optional[Namespace] = None
+        self, gpu: Optional[int] = None, args: Optional[Namespace] = None,
+
     ):
-        print(args)
         if args is None:
             parser = arg.add_learn_args(ArgumentParser())
             args = parser.parse_args()
@@ -87,7 +91,9 @@ class QuikTrek:
         self.trek_prep(args)
 
     def create_dataclasses(self, gpu, args):
-        self.world = World(args.nr, args.nodes, gpu, args.gpus)
+        self.world = World(
+            args.nr, args.nodes, gpu, args.gpus, getattr(args, "trial_id", 0)
+            )
         self.dlkwargs = DlKwargs(
             batch_size=args.bs,
             num_workers=args.num_workers,

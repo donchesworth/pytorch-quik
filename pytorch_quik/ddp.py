@@ -53,7 +53,7 @@ def setup(gpu: str, args: Union[Namespace, NamedTuple]):
         args (Union[Namespace, NamedTuple]): The gpu parameters
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
+    os.environ["MASTER_PORT"] = str(args.master_port)
     os.environ["NCCL_P2P_LEVEL"] = "0"
 
     dist.init_process_group(

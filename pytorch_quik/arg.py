@@ -40,7 +40,7 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         type=int,
         metavar="N",
         help="number of total epochs to run (2, 3, 5)",
-    )    
+    )
     parser.add_argument(
         "-nr",
         "--nr",
