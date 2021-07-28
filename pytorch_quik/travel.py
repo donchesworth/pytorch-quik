@@ -246,11 +246,12 @@ class QuikTraveler:
             self.data.labels,
             label_names,
         )
-        self.trek.mlflow.log_artifact(cm_id)
-        {
-            self.trek.mlflow.log_metric(metric, value, 0)
-            for metric, value in self.cr.items()
-        }
+        if self.args.use_mlflow:
+            self.trek.mlflow.log_artifact(cm_id)
+            {
+                self.trek.mlflow.log_metric(metric, value, 0)
+                for metric, value in self.cr.items()
+            }
 
 
 class QuikData:
