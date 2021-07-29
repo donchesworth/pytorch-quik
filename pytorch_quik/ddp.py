@@ -58,8 +58,8 @@ def setup(gpu: str, args: Union[Namespace, NamedTuple]):
 
     dist.init_process_group(
         backend="nccl",
-        # used to be init_method="env://",
-        init_method='file:///mnt/init/' + str(args.master_port),
+        init_method="env://",
+        # init_method='file:///mnt/init/' + str(args.master_port),
         world_size=args.world_size,
         rank=args.rank_id,
     )

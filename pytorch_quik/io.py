@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import date
 import json
 import numpy as np
+from contextlib import nullcontext
+from filelock import FileLock
 
 
 def id_str(
@@ -61,6 +63,7 @@ def load_torch_object(
     args: Namespace,
     epoch: Optional[int] = None,
     location: Optional[bool] = False,
+    lock: Optional[bool] = False,
 ) -> Union[str, torch.Tensor]:
     """Load a PyTorch object (tensor, model, state_dict)
 
@@ -74,12 +77,16 @@ def load_torch_object(
     Returns:
         Union[str, torch.Tensor]: [description]
     """
-
+    if lock:
+        lock_type = FileLock(Path.home().joinpath(".data.lock"))
+    else:
+        lock_type = nullcontext()
     print("loading " + torch_type + " " + str(getattr(args, "device", "cpu")))
     filename = id_str(torch_type, args, epoch)
     if location:
         return filename
-    pt = torch.load(filename)
+    with lock_type:
+        pt = torch.load(filename)
     if torch_type == "state_dict":
         # DDP will leave module artifacts to be removed
         pt = {k.replace("module.", ""): v for k, v in pt.items()}
