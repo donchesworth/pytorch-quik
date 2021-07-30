@@ -28,10 +28,9 @@ class World:
     total_nodes: int = 1
     gpu_id: int = None
     total_gpus: int = None
-    trial_id: int = None
-    master_port: int = field(init=False)
     rank_id: int = field(init=False)
     world_size: int = field(init=False)
+    use_ray: bool = False
     is_ddp: bool = field(init=False)
     is_logger: bool = field(init=False)
 
@@ -43,8 +42,10 @@ class World:
             self.world_size = None
             self.is_ddp = False
         else:
-            self.device = torch.device("cuda", self.gpu_id)
-            self.master_port = 12355 + self.total_gpus * self.trial_id
+            if self.use_ray:
+                self.device = torch.device("cuda")
+            else:
+                self.device = torch.device("cuda", self.gpu_id)
             self.rank_id = self.node_id * self.total_gpus + self.gpu_id
             self.world_size = self.total_gpus * self.total_nodes
             self.is_ddp = True
@@ -92,7 +93,9 @@ class QuikTrek:
 
     def create_dataclasses(self, gpu, args):
         self.world = World(
-            args.nr, args.nodes, gpu, args.gpus, getattr(args, "trial_id", 0)
+            args.nr, args.nodes, gpu, args.gpus, getattr(
+                args, "use_ray", False
+                )
             )
         self.dlkwargs = DlKwargs(
             batch_size=args.bs,
@@ -119,7 +122,7 @@ class QuikTrek:
             )
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
-        if self.world.gpu_id is not None:
+        if self.world.gpu_id is not None and not self.args.use_ray:
             torch.cuda.set_device(self.world.device)
             ddp.setup(self.world.gpu_id, self.world)
 

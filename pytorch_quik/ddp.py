@@ -6,6 +6,15 @@ from typing import Callable, NamedTuple, Union, Dict, Any
 from argparse import Namespace
 import os
 from tqdm import tqdm
+import socket
+from contextlib import closing
+
+
+def find_free_port():
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+        s.bind(('', 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
 
 
 def tq_bar(esteps, epoch=0, total_epochs=0, train=True):
@@ -53,7 +62,7 @@ def setup(gpu: str, args: Union[Namespace, NamedTuple]):
         args (Union[Namespace, NamedTuple]): The gpu parameters
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(args.master_port)
+    os.environ["MASTER_PORT"] = str(find_free_port())
     os.environ["NCCL_P2P_LEVEL"] = "0"
 
     dist.init_process_group(
