@@ -11,6 +11,17 @@
 
 As I was building out the same set of code for a recommender system, a BERT sentiment model, and a co-worker was about to build a classification model, I decided to standardize the code into this package. It's lightweight, because I didn't want to hide the standard steps to keep the user from learning Neural Networks, but I also didn't want to maintain the code in multiple places.
 
+## Updates: 
+### v0.3.0 (TBD)
+- Integrating ray tune for hyperparameter optimization
+### v0.2.0 (07/22/2021)
+- Integrated MLflow into `QuikTrek` using `QuikMlflow` and `use_mlflow = True`
+- Added utilities to create all required files for a transformers TorchServe model archive
+- Added utilities to build a dataset and query a TorchServe API
+### v0.1.0 (06/03/2021)
+- Refactored to provide classes `QuikTrek`, `QuikTraveler`, `QuikData`
+- Added documentation
+
 ### Installation
 
 ``` bash
