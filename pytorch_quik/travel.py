@@ -122,7 +122,7 @@ class QuikTrek:
             )
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
-        if self.world.gpu_id is not None and not self.args.use_ray:
+        if self.world.gpu_id is not None and not getattr(self.args, "use_ray", False):
             torch.cuda.set_device(self.world.device)
             ddp.setup(self.world.gpu_id, self.world)
 

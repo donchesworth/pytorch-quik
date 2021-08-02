@@ -2,7 +2,8 @@
 # chmod 777 install.sh
 # ./install.sh
 # python mlflow_creds.py
-# pip install --user ray[tune] (must be 1.3.1!)
+# pip install --user ray[tune] 
+# pip install --upgrade aioredis==1.3.1
 # python /repos/nps-sentiment/main.py data -s nps -bt bert -l 0 1 2
 # python /repos/nps-sentiment/main.py data -s nps -bt roberta -l 0 1 2
 
@@ -43,8 +44,10 @@ def reset_config(self, new_config):
 def run_ddp_tune(args):
     config = {
         "bert_type": tune.choice(['bert', 'roberta']),
-        "lr": tune.loguniform(1e-6, 2e-5),
-        # "batch_size": tune.choice([2, 4, 8, 16]),
+        "learning_rate": tune.loguniform(1e-6, 2e-5),
+        "batch_size": tune.choice([8, 16, 24]),
+        "beta_max": tune.choice([0.99, 0.999]),
+        "eps": tune.loguniform(1e-8, 1e-6),
     }
     tune_scheduler = ASHAScheduler(
         max_t=5,
@@ -53,22 +56,22 @@ def run_ddp_tune(args):
         metric="valid_loss",
         mode="min",
     )
-    dist_tune_train_valid = DistributedTrainableCreator(
-        partial(ns.model.tune_train_valid, args=args),
+    dist_tune = DistributedTrainableCreator(
+        partial(ns.model.fine_tune, args=args),
         num_workers=4,
         num_cpus_per_worker=7,
         num_gpus_per_worker=1,
         backend="nccl",
     )
 
-    dist_tune_train_valid.reset_config = reset_config
+    # dist_tune.reset_config = reset_config
 
     result = tune.run(
-        dist_tune_train_valid,
+        dist_tune,
         config=config,
         num_samples=args.num_samples,
         scheduler=tune_scheduler,
-        # reuse_actors=True,
+    #    reuse_actors=True,
     )
     best_trial = result.get_best_trial("valid_loss", "min", "last")
     print("Best trial config: {}".format(best_trial.config))
@@ -84,11 +87,12 @@ def main(num_samples=4, max_num_epochs=5):
     # args.num_samples = 4
     # args.max_num_epochs = 2
     args.use_mlflow = False
-    args.mixed_precision = False
+    args.mixed_precision = True # no descent when False 
     args.use_ray = True
     args.epochs = 5    
     args.num_samples = num_samples
     args.max_num_epochs = max_num_epochs
+    args.num_workers = 4
     best_trial = run_ddp_tune(args)
     return best_trial   # test_best_model(best_trial)
 
@@ -96,23 +100,40 @@ def main(num_samples=4, max_num_epochs=5):
 bt = main()
 
 
+# testing decrease
+import nps_sentiment as ns
+import pytorch_quik as pq
+from transformers import AdamW, get_linear_schedule_with_warmup, logging
+from nps_sentiment.model import train_pass, valid_pass, train_valid
+from torch import nn
+
+gpu = 0
+args = ns.model.parse_args()
+args.gpus = 1
+args.data_date = '20210728'
+args.use_mlflow = False
+args.use_ray = False
+# args.bert_type = 'roberta'
+train_valid(gpu, args)
 
 # testing valid
 import nps_sentiment as ns
 import pytorch_quik as pq
 from transformers import AdamW, get_linear_schedule_with_warmup, logging
-from nps_sentiment.model import valid_pass
+from nps_sentiment.model import train_pass, valid_pass
+from torch import nn
 
 gpu = 0
 args = ns.model.parse_args()
+args.gpus = 1
 args.data_date = '20210728'
 args.bs = 16
 # args.num_samples = 4
 # args.max_num_epochs = 2
 args.use_mlflow = False
-args.mixed_precision = False
+args.mixed_precision = True
 args.use_ray = False
-args.bert_type = 'roberta'
+# args.bert_type = 'roberta'
 args.epochs = 5  
 trek = pq.travel.QuikTrek(gpu=gpu, args=args)
 tr = pq.travel.QuikTraveler(trek, "train")
@@ -130,6 +151,13 @@ tr.set_criterion(nn.CrossEntropyLoss)
 tr.set_optimizer(AdamW)
 args.sched_kwargs["num_training_steps"] = tr.data.total_steps
 tr.set_scheduler(get_linear_schedule_with_warmup, args.sched_kwargs)
+for epoch in range(args.epochs):
+    train_pass(tr, epoch, args)
+    valid_pass(vl, epoch, args)
+
+    tr.metrics.write()
+    if tr.world.is_logger:
+        print(tr.metrics.results)
 
 
 # optuna - too experimental
