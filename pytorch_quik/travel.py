@@ -363,7 +363,7 @@ class QuikMlflow:
         self.runid = self.run.info.run_id
         self.client.set_tag(self.runid, "mlflow.user", user)
         if world.use_ray:
-            self.client.set_tag(self.runid, "mlflow.source", "ray tune")
+            self.client.set_tag(self.runid, "mlflow.source.name", "ray tune")
         self.log_parameters([world, dlkwargs, optkwargs])
 
     def log_parameters(self, dclasses):
