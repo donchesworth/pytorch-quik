@@ -3,6 +3,7 @@
 # ./install.sh
 # python mlflow_creds.py
 # pip install --user ray[tune] 
+# sudo apt install rsync
 # pip install --upgrade aioredis==1.3.1
 # python /repos/nps-sentiment/main.py data -s nps -bt bert -l 0 1 2
 # python /repos/nps-sentiment/main.py data -s nps -bt roberta -l 0 1 2
@@ -12,33 +13,6 @@ from ray.tune.integration.torch import DistributedTrainableCreator
 from ray.tune.schedulers import ASHAScheduler
 from functools import partial
 import nps_sentiment as ns
-
-# , WrappedDistributedTorchTrainable
-
-# class PytorchTrainble(WrappedDistributedTorchTrainable):
-#     """Train a Pytorch ConvNet."""
-
-#     def setup(self, config):
-#         self.train_loader, self.test_loader = get_data_loaders()
-#         self.model = ConvNet()
-#         self.optimizer = optim.SGD(
-#             self.model.parameters(),
-#             lr=config.get("lr", 0.01),
-#             momentum=config.get("momentum", 0.9))
-
-def reset_config(self, new_config):
-    if "lr" in new_config:
-        lr = new_config["lr"]
-        trek.args.lr = lr
-        trek.optkwargs.lr = lr
-            
-    for param_group in self.optimizer.param_groups:
-        if "lr" in new_config:
-            param_group["lr"] = new_config["lr"]
-        if "bert_type" in new_config:
-            param_group["bert_type"] = new_config["bert_type"]
-    self.config = new_config
-    return True
 
 # ray tune
 def run_ddp_tune(args):
@@ -64,32 +38,27 @@ def run_ddp_tune(args):
         backend="nccl",
     )
 
-    # dist_tune.reset_config = reset_config
-
     result = tune.run(
         dist_tune,
         config=config,
         num_samples=args.num_samples,
         scheduler=tune_scheduler,
-    #    reuse_actors=True,
     )
     best_trial = result.get_best_trial("valid_loss", "min", "last")
     print("Best trial config: {}".format(best_trial.config))
-    print("Best trial final validation loss: {}".format(
-        best_trial.last_result["valid_loss"]))
     return best_trial
 
 
-def main(num_samples=4, max_num_epochs=5):
+def main(num_samples=2, max_num_epochs=5):
     args = ns.model.parse_args()
     args.data_date = '20210728'
     args.bs = 16
     # args.num_samples = 4
     # args.max_num_epochs = 2
-    args.use_mlflow = False
+    args.use_mlflow = True
     args.mixed_precision = True # no descent when False 
     args.use_ray = True
-    args.epochs = 5    
+    args.epochs = 2
     args.num_samples = num_samples
     args.max_num_epochs = max_num_epochs
     args.num_workers = 4

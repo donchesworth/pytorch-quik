@@ -110,7 +110,7 @@ class QuikTrek:
         self.args.device = self.world.device
 
     def trek_prep(self, args):
-        if args.use_mlflow:
+        if args.use_mlflow and self.world.is_logger:
             self.mlflow = QuikMlflow(
                 args.experiment,
                 args.user,
@@ -220,14 +220,14 @@ class QuikTraveler:
 
     def add_vloss(self, vlosses, nums, epoch):
         self.metrics.add_vloss(vlosses, nums)
-        if self.args.use_mlflow:
+        if self.args.use_mlflow and self.world.is_logger:
             vloss = self.metrics.metric_dict["valid_loss"]
             step = self.metrics.steps * (epoch + 1)
             self.trek.mlflow.log_metric("valid_loss", vloss, step)
 
     def save_state_dict(self, epoch):
         sd_id = io.save_state_dict(self.model, self.args, epoch)
-        if self.args.use_mlflow:
+        if self.args.use_mlflow and self.world.is_logger:
             self.trek.mlflow.log_artifact(str(sd_id))
 
     def record_results(
@@ -249,7 +249,7 @@ class QuikTraveler:
             self.data.labels,
             label_names,
         )
-        if self.args.use_mlflow:
+        if self.args.use_mlflow and self.world.is_logger:
             self.trek.mlflow.log_artifact(cm_id)
             {
                 self.trek.mlflow.log_metric(metric, value, 0)
