@@ -25,7 +25,12 @@ __version__ = "0.2.0"
 
 try:
     import pytorch_quik.bert
-
     __all__.append("bert")
+except ImportError:
+    print("skipping bert functions")
+
+try:
+    import pytorch_quik.tune
+    __all__.append("tune")
 except ImportError:
     print("skipping bert functions")
