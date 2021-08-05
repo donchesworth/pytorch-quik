@@ -79,7 +79,7 @@ class MlfKwargs:
     """MLFlow keyword arguments"""
 
     tracking_uri: str
-    endpoint_uri: str
+    endpoint_url: str
     experiment: str
     user: str
     use_ray: str
@@ -121,7 +121,7 @@ class QuikTrek:
         )
         self.mlfkwargs = MlfKwargs(
             tracking_uri=args.tracking_uri,
-            endpoint_uri=args.endpoint_url,
+            endpoint_url=args.endpoint_url,
             experiment=args.experiment,
             user=args.user,
             use_ray=getattr(args, "use_ray", False),
@@ -135,7 +135,7 @@ class QuikTrek:
                 self.dlkwargs,
                 self.optkwargs,
                 self.world,
-                **self.mlfkwargs,
+                **asdict(self.mlfkwargs),
             )
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
