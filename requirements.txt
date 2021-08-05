@@ -10,3 +10,5 @@ pytest-mpl
 pytest-lazy-fixture
 codecov
 bump2version
+mlflow
+ray[tune]

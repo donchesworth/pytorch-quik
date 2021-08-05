@@ -378,8 +378,8 @@ class QuikMlflow:
             self.expid = self.client.create_experiment(experiment)
         else:
             self.expid = exp.experiment_id
-        self.tags = self.add_tags(self, user, use_ray, parent_run)
-        self.run = self.client.create_run(self.expid, self.tags)
+        self.tags = self.add_tags(user, use_ray, parent_run)
+        self.run = self.client.create_run(self.expid, tags=self.tags)
         self.runid = self.run.info.run_id
         self.log_parameters([world, dlkwargs, optkwargs])
 

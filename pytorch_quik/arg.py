@@ -1,6 +1,14 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import dask_quik as dq
 from os import popen
+from typing import Dict, Any
+
+
+def update_args(args: Namespace, updates: Dict[str, Any]):
+    dargs = vars(args)
+    for key, new_value in updates.items():
+        dargs[key] = new_value
+    return args
 
 
 def beta_type(strings: str) -> tuple:
