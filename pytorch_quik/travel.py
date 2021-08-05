@@ -74,6 +74,18 @@ class OptKwargs:
     betas: tuple
 
 
+@dataclass
+class MlfKwargs:
+    """MLFlow keyword arguments"""
+
+    tracking_uri: str
+    endpoint_uri: str
+    experiment: str
+    user: str
+    use_ray: str
+    parent_run: str
+
+
 class QuikTrek:
     """A class for maintaining the general data for the full trek to
     be shared between travelers.
@@ -107,18 +119,23 @@ class QuikTrek:
             eps=args.eps,
             betas=args.betas,
         )
+        self.mlfkwargs = MlfKwargs(
+            tracking_uri=args.tracking_uri,
+            endpoint_uri=args.endpoint_url,
+            experiment=args.experiment,
+            user=args.user,
+            use_ray=getattr(args, "use_ray", False),
+            parent_run=getattr(args, "parent_run", None),
+        )
         self.args.device = self.world.device
 
     def trek_prep(self, args):
         if args.use_mlflow and self.world.is_logger:
             self.mlflow = QuikMlflow(
-                args.experiment,
-                args.user,
-                args.tracking_uri,
-                args.endpoint_url,
-                self.world,
                 self.dlkwargs,
                 self.optkwargs,
+                self.world,
+                **self.mlfkwargs,
             )
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
@@ -343,13 +360,15 @@ class QuikMlflow:
 
     def __init__(
         self,
-        experiment,
-        user,
-        tracking_uri,
-        endpoint_url,
-        world,
         dlkwargs,
         optkwargs,
+        world,
+        tracking_uri,
+        endpoint_url,
+        experiment,
+        user,
+        use_ray,
+        parent_run,
     ):
         if "MLFLOW_S3_ENDPOINT_URL" not in os.environ:
             os.environ["MLFLOW_S3_ENDPOINT_URL"] = endpoint_url
@@ -359,12 +378,18 @@ class QuikMlflow:
             self.expid = self.client.create_experiment(experiment)
         else:
             self.expid = exp.experiment_id
-        self.run = self.client.create_run(self.expid)
+        self.tags = self.add_tags(self, user, use_ray, parent_run)
+        self.run = self.client.create_run(self.expid, self.tags)
         self.runid = self.run.info.run_id
-        self.client.set_tag(self.runid, "mlflow.user", user)
-        if world.use_ray:
-            self.client.set_tag(self.runid, "mlflow.source.name", "ray tune")
         self.log_parameters([world, dlkwargs, optkwargs])
+
+    def add_tags(self, user, use_ray, parent_run):
+        tags = {"mlflow.user": user}
+        if parent_run is not None:
+            tags["mlflow.parentRunId"] = parent_run
+        if use_ray:
+            tags["mlflow.source.name"] = "ray tune"
+        return tags
 
     def log_parameters(self, dclasses):
         for dclass in dclasses:
