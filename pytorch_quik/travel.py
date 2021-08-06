@@ -83,6 +83,7 @@ class MlfKwargs:
     experiment: str
     user: str
     use_ray: str
+    is_parent: bool
     parent_run: str
 
 
