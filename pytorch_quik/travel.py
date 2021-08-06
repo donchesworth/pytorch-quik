@@ -125,6 +125,7 @@ class QuikTrek:
             experiment=args.experiment,
             user=args.user,
             use_ray=getattr(args, "use_ray", False),
+            is_parent=getattr(args, "is_parent", False),
             parent_run=getattr(args, "parent_run", None),
         )
         self.args.device = self.world.device
@@ -368,6 +369,7 @@ class QuikMlflow:
         experiment,
         user,
         use_ray,
+        is_parent,
         parent_run,
     ):
         if "MLFLOW_S3_ENDPOINT_URL" not in os.environ:
@@ -381,7 +383,8 @@ class QuikMlflow:
         self.tags = self.add_tags(user, use_ray, parent_run)
         self.run = self.client.create_run(self.expid, tags=self.tags)
         self.runid = self.run.info.run_id
-        self.log_parameters([world, dlkwargs, optkwargs])
+        if not is_parent:
+            self.log_parameters([world, dlkwargs, optkwargs])
 
     def add_tags(self, user, use_ray, parent_run):
         tags = {"mlflow.user": user}
