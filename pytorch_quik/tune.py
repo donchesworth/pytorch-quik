@@ -10,7 +10,7 @@
 
 from ray import tune
 from ray.tune.integration.torch import DistributedTrainableCreator as DTC
-from ray.tune.schedulers import ASHAScheduler
+from ray.tune.schedulers import ASHAScheduler, MedianStoppingRule
 from functools import partial
 import nps_sentiment as ns
 from typing import Callable, Dict, Any
@@ -28,10 +28,14 @@ def run_ddp_tune(
     train_fcn: Callable, args: Namespace, tune_config: Dict[str, Any]
     ):
 
-    tune_scheduler = ASHAScheduler(
-        max_t=5,
-        grace_period=1,
-        reduction_factor=2,
+    # tune_scheduler = ASHAScheduler(
+    #     max_t=5,
+    #     grace_period=1,
+    #     reduction_factor=2,
+    #     metric="valid_loss",
+    #     mode="min",
+    # )
+    tune_scheduler = MedianStoppingRule(
         metric="valid_loss",
         mode="min",
     )
