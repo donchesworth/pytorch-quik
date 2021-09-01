@@ -1,5 +1,6 @@
 import numpy as np
 from torch import Tensor
+from torch._C import Value
 from transformers import (
     BertTokenizer,
     RobertaTokenizer,
@@ -175,10 +176,17 @@ def get_pretrained_model(
     """
     num_lbls = len(np.unique(labels))
     bert_dict = BERT_MODELS[bert_type]
-    model = bert_dict["model"].from_pretrained(
-        bert_dict["model-type"],
-        num_labels=num_lbls,
-        output_attentions=False,
-        output_hidden_states=False,
-    )
+    for i in range(0, 3):
+        while True:
+            try:
+                model = bert_dict["model"].from_pretrained(
+                    bert_dict["model-type"],
+                    num_labels=num_lbls,
+                    output_attentions=False,
+                    output_hidden_states=False,
+                )
+            except ValueError:
+                print("Connection error, trying again")
+                continue
+            break
     return model
