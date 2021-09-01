@@ -12,11 +12,7 @@ from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass, field, asdict, is_dataclass
 import os
 from tqdm import tqdm
-
-try:
-    from mlflow.tracking import MlflowClient
-except ImportError:
-    pass
+from .mlflow import QuikMlflow
 
 
 @dataclass
@@ -74,19 +70,6 @@ class OptKwargs:
     betas: tuple
 
 
-@dataclass
-class MlfKwargs:
-    """MLFlow keyword arguments"""
-
-    tracking_uri: str
-    endpoint_url: str
-    experiment: str
-    user: str
-    use_ray: str
-    is_parent: bool
-    parent_run: str
-
-
 class QuikTrek:
     """A class for maintaining the general data for the full trek to
     be shared between travelers.
@@ -120,25 +103,13 @@ class QuikTrek:
             eps=args.eps,
             betas=args.betas,
         )
-        self.mlfkwargs = MlfKwargs(
-            tracking_uri=args.tracking_uri,
-            endpoint_url=args.endpoint_url,
-            experiment=args.experiment,
-            user=args.user,
-            use_ray=getattr(args, "use_ray", False),
-            is_parent=getattr(args, "is_parent", False),
-            parent_run=getattr(args, "parent_run", None),
-        )
         self.args.device = self.world.device
 
     def trek_prep(self, args):
         if args.use_mlflow and self.world.is_logger:
-            self.mlflow = QuikMlflow(
-                self.dlkwargs,
-                self.optkwargs,
-                self.world,
-                **asdict(self.mlfkwargs),
-            )
+            self.mlflow = QuikMlflow(self.args)
+            self.mlflow.create_run([self.dlkwargs, self.optkwargs, self.world,])
+
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
         if self.world.gpu_id is not None and not getattr(self.args, "use_ray", False):
@@ -349,66 +320,3 @@ class QuikAmp:
                 clip_grad_norm_(trvlr.model.parameters(), 1.0)
         self.scaler.step(trvlr.optimizer)
         self.scaler.update()
-
-
-class QuikMlflow:
-    """A class to manage MLflow API calls. You'll have to add your own
-    credentials either to ~/.aws/credentials, or store them in environment
-    variables like:
-        os.environ["AWS_ACCESS_KEY_ID"] = ''
-        os.environ["AWS_SECRET_ACCESS_KEY"] = ''
-        os.environ["MLFLOW_S3_ENDPOINT_URL"] = ''
-    """
-
-    def __init__(
-        self,
-        dlkwargs,
-        optkwargs,
-        world,
-        tracking_uri,
-        endpoint_url,
-        experiment,
-        user,
-        use_ray,
-        is_parent,
-        parent_run,
-    ):
-        if "MLFLOW_S3_ENDPOINT_URL" not in os.environ:
-            os.environ["MLFLOW_S3_ENDPOINT_URL"] = endpoint_url
-        self.client = MlflowClient(tracking_uri=tracking_uri)
-        exp = self.client.get_experiment_by_name(experiment)
-        if exp is None:
-            self.expid = self.client.create_experiment(experiment)
-        else:
-            self.expid = exp.experiment_id
-        self.tags = self.add_tags(user, use_ray, parent_run)
-        self.run = self.client.create_run(self.expid, tags=self.tags)
-        self.runid = self.run.info.run_id
-        if not is_parent:
-            self.log_parameters([world, dlkwargs, optkwargs])
-
-    def add_tags(self, user, use_ray, parent_run):
-        tags = {"mlflow.user": user}
-        if parent_run is not None:
-            tags["mlflow.parentRunId"] = parent_run
-        if use_ray:
-            tags["mlflow.source.name"] = "ray tune"
-        return tags
-
-    def log_parameters(self, dclasses):
-        for dclass in dclasses:
-            if is_dataclass(dclass):
-                dclass = asdict(dclass)
-            _ = [
-                self.client.log_param(self.runid, k, v)
-                for k, v in dclass.items()
-            ]
-
-    def log_metric(self, key, metric, step):
-        self.client.log_metric(self.runid, key, metric, step=step)
-
-    def log_artifact(self, sd_id):
-        self.client.log_artifact(self.runid, str(sd_id))
-
-    def end_run(self):
-        self.client.set_terminated(self.runid)
