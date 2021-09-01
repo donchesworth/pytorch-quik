@@ -183,13 +183,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 probs = probs.detach().numpy().tolist()[0]
                 probs = dict(zip(prob_keys, probs))
                 labels = self.mapping[predicted_idx]
-                 # inferences.append(self.mapping[predicted_idx])
-                inferences.append({'probs': probs, 'labels': labels})
+                # inferences.append(self.mapping[predicted_idx])
+                inferences.append({'prob': probs, 'labels': labels})
         # Handling inference for question_answering.
         elif self.setup_config["mode"] == "question_answering":
             # the output should be only answer_start and answer_end
             # we are outputing the words just for demonstration.
-            if self.setup_config["save_mode"]=="pretrained":
+            if self.setup_config["save_mode"] == "pretrained":
                 outputs = self.model(input_batch)
                 answer_start_scores = outputs.start_logits
                 answer_end_scores = outputs.end_logits

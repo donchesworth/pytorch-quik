@@ -81,12 +81,13 @@ def load_torch_object(
         lock_type = FileLock(Path.home().joinpath(".data.lock"))
     else:
         lock_type = nullcontext()
-    print("loading " + torch_type + " " + str(getattr(args, "device", "cpu")))
+    device = getattr(args, "device", torch.device("cpu"))
+    print("loading " + torch_type + " " + str(device))
     filename = id_str(torch_type, args, epoch)
     if location:
         return filename
     with lock_type:
-        pt = torch.load(filename)
+        pt = torch.load(filename, map_location=device)
     if torch_type == "state_dict":
         # DDP will leave module artifacts to be removed
         pt = {k.replace("module.", ""): v for k, v in pt.items()}
