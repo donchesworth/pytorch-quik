@@ -1,13 +1,4 @@
-import pytorch_quik.api
-import pytorch_quik.arg
-import pytorch_quik.ddp
-import pytorch_quik.io
-import pytorch_quik.metrics
-import pytorch_quik.serve
-import pytorch_quik.tensor
-import pytorch_quik.transform
-import pytorch_quik.travel
-import pytorch_quik.utils
+from importlib import import_module
 
 __all__ = [
     "api",
@@ -21,16 +12,15 @@ __all__ = [
     "travel",
     "utils",
 ]
+_optional = ["bert", "mlflow", "tune"]
 __version__ = "0.2.0"
 
-try:
-    import pytorch_quik.bert
-    __all__.append("bert")
-except ImportError:
-    print("skipping bert functions")
+for submodule in __all__:
+    import_module(f"pytorch_quik.{submodule}")
 
-try:
-    import pytorch_quik.tune
-    __all__.append("tune")
-except ImportError:
-    print("skipping bert functions")
+for submodule in _optional:
+    try:
+        import_module(f"pytorch_quik.{submodule}")
+        __all__.append(submodule)
+    except ImportError:
+        print(f"Error importing {submodule}, skipping functions")

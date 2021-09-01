@@ -12,3 +12,5 @@ codecov
 bump2version
 mlflow
 ray[tune]
+torchserve
+torch-model-archiver
