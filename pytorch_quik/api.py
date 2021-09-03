@@ -16,7 +16,7 @@ JSON_HEADER = {"Content-Type": "application/json"}
 
 def requests_session() -> Session:
     retry_strategy = Retry(
-        total=3,
+        total=10,
         backoff_factor=1,
         status_forcelist=[507],
         method_whitelist=["POST"],

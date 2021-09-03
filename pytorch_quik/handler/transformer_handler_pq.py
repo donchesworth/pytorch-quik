@@ -184,7 +184,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 probs = dict(zip(prob_keys, probs))
                 labels = self.mapping[predicted_idx]
                 # inferences.append(self.mapping[predicted_idx])
-                inferences.append({'prob': probs, 'labels': labels})
+                inferences.append({'prob': probs, 'label': labels})
         # Handling inference for question_answering.
         elif self.setup_config["mode"] == "question_answering":
             # the output should be only answer_start and answer_end
