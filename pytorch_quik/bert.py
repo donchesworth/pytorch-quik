@@ -8,7 +8,8 @@ from transformers import (
     RobertaForSequenceClassification,
     BatchEncoding,
     PreTrainedTokenizer,
-    PreTrainedModel
+    PreTrainedModel,
+    logging,
 )
 from typing import Optional, List, Union, Dict
 import shutil
@@ -176,6 +177,7 @@ def get_pretrained_model(
     """
     num_lbls = len(np.unique(labels))
     bert_dict = BERT_MODELS[bert_type]
+    logging.set_verbosity_error()
     for i in range(0, 3):
         while True:
             try:

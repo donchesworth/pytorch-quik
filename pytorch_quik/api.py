@@ -9,6 +9,12 @@ import numpy as np
 from math import ceil
 import json
 from pandas.io.json import json_normalize
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 URL = "http://deepshadow.gsslab.rdu2.redhat.com:8080/predictions/my_tc"
 JSON_HEADER = {"Content-Type": "application/json"}
@@ -29,7 +35,7 @@ def requests_session() -> Session:
 
 def request_post(data: str, sesh: Session, conn: Connection, num: int):
     r = sesh.post(URL, data=bytes(data, "utf-8"), headers=JSON_HEADER)
-    print(f"{num} status_code: {r.status_code}")
+    logger.info(f"Batch {num}, status_code: {r.status_code}")
     conn.send(r)
 
 

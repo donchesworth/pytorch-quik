@@ -13,6 +13,12 @@ from dataclasses import dataclass, field, asdict, is_dataclass
 import os
 from tqdm import tqdm
 from .mlflow import QuikMlflow
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -26,7 +32,7 @@ class World:
     total_gpus: int = None
     rank_id: int = field(init=False)
     world_size: int = field(init=False)
-    use_ray: bool = False
+    use_ray_tune: bool = False
     is_ddp: bool = field(init=False)
     is_logger: bool = field(init=False)
 
@@ -38,7 +44,7 @@ class World:
             self.world_size = None
             self.is_ddp = False
         else:
-            if self.use_ray:
+            if self.use_ray_tune:
                 self.device = torch.device("cuda")
             else:
                 self.device = torch.device("cuda", self.gpu_id)
@@ -90,7 +96,7 @@ class QuikTrek:
     def create_dataclasses(self, gpu, args):
         self.world = World(
             args.nr, args.nodes, gpu, args.gpus, getattr(
-                args, "use_ray", False
+                args, "use_ray_tune", False
                 )
             )
         self.dlkwargs = DlKwargs(
@@ -112,7 +118,7 @@ class QuikTrek:
 
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
-        if self.world.gpu_id is not None and not getattr(self.args, "use_ray", False):
+        if self.world.gpu_id is not None and not getattr(self.args, "use_ray_tune", False):
             torch.cuda.set_device(self.world.device)
             ddp.setup(self.world.gpu_id, self.world)
 

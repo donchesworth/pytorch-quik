@@ -1,9 +1,17 @@
 from typing import Optional, Union, Dict, List, Tuple
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import RandomOverSampler
+from dataclasses import dataclass
+from collections import OrderedDict
+import logging
+import sys
 
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def create_dicts(
     categories: np.array, labels: np.array
@@ -49,11 +57,19 @@ def create_labels(
     """
     cats = np.sort(df[category].unique())
     labels = np.array(labels)
-    print("Categories\t\t" + str(cats) + "\nNow match labels\t" + str(labels))
+    logger.info(f"\n\tCategories\t\t {str(cats)}"
+                f"\n\tNow match labels\t {str(labels)}")
     cat_dict, label_dict = create_dicts(cats, labels)
     df["cat_index"] = df[category].replace(cat_dict)
     df["label"] = df[category].replace(label_dict)
     return df
+
+
+@dataclass
+class DataSplit:
+    """Build a class just for inputs and labels"""
+    X: npt.ArrayLike
+    y: npt.ArrayLike
 
 
 def imbalanced_split(
@@ -62,7 +78,7 @@ def imbalanced_split(
     test_size: Optional[int] = 0.1,
     valid_size: Optional[Union[int, None]] = None,
     random_state: Optional[int] = 42,
-) -> Tuple[np.ndarray]:
+) -> Dict[str, DataSplit]:
     """When categories are imbalanced, create a balanced split of train,
     validation, and test sets.
 
@@ -78,8 +94,9 @@ def imbalanced_split(
             Defaults to 42.
 
     Returns:
-        Tuple[np.ndarray]: A tuple of four to six arrays
+        Dict[str, DataSplit]: A dict of four to six x/y DataSplits
     """
+    data = OrderedDict()
     X_train, X_test, y_train, y_test = train_test_split(
         df.drop(label_name, axis=1).values,
         df[label_name].values,
@@ -87,7 +104,6 @@ def imbalanced_split(
         random_state=random_state,
         stratify=df[label_name].values,
     )
-    arrlist = [X_test, y_test]
     if valid_size is not None:
         X_train, X_valid, y_train, y_valid = train_test_split(
             X_train,
@@ -96,11 +112,12 @@ def imbalanced_split(
             random_state=random_state,
             stratify=y_train,
         )
-        arrlist = [X_valid, y_valid] + arrlist
+        data["valid"] = DataSplit(X_valid, y_valid)
     X_over, y_over = RandomOverSampler().fit_resample(X_train, y_train)
     vc = np.unique(y_over, return_counts=True)
-    print(
-        "These labels \t\t" + str(vc[0]) + "\nare oversampled to " + str(vc[1])
-    )
-    arrlist = [X_over, y_over] + arrlist
-    return arrlist
+    logger.info(f"\n\tThese labels \t\t {str(vc[0])}"
+                f"\n\tare oversampled to {str(vc[1])}")
+    data["test"] = DataSplit(X_test, y_test)
+    data["train"] = DataSplit(X_over, y_over)
+    data.move_to_end("train", last=False)
+    return data

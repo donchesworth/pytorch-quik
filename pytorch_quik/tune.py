@@ -13,6 +13,7 @@ from ray.tune.integration.torch import DistributedTrainableCreator as DTC
 from ray.tune.schedulers import ASHAScheduler, MedianStoppingRule
 from functools import partial
 import nps_sentiment as ns
+from ruamel.yaml import YAML, YAMLError
 from typing import Callable, Dict, Any
 from argparse import Namespace
 
@@ -22,6 +23,15 @@ RESOURCES = {
     "num_gpus_per_worker": 1,
     "backend": "nccl",
 }
+
+def get_tune_config(filename: str) -> Dict[str, Callable]:
+    with open(filename, "r") as stream:
+        try:
+            yaml_dict = YAML().load(stream)
+        except YAMLError as e:
+            print(e)
+    return {key: getattr(tune, list(dist.keys())[0])(**list(dist.values())[0]) for key, dist in yaml_dict.items()}
+
 
 
 def run_ddp_tune(

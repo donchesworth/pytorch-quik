@@ -128,6 +128,37 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     return parser
 
 
+def add_ray_tune_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
+    """Add ray tune args will add arguments that are common to ray tune, 
+    and necessary for a pytorch-quik traveler. These can be set by command
+    line, or can be defaulted in a script, or the defaults here can be
+    used.
+
+    Args:
+        parser (ArgumentParser): This is the parser from the PyTorch project.
+        kwargs (dict, optional): Sometimes the individual project will want
+        to have default ray tune args. For instance, num samples could be
+        set at the command line, if not by the PyTorch project, or if not it
+        will be set here. If they are all set here, then kwargs defaults to {}.
+
+    Returns:
+        ArgumentParser: The same ArgumentParser but with loaded ray tune args.
+    """
+    parser.add_argument(
+        "--use_ray_tune",
+        dest="use_ray_tune",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--num_samples",
+        default=kwargs.get("num_samples", 20),
+        type=int,
+        help="The number of ray tune hyperparameter permutations to be trained",
+    )
+    return parser
+
+
+
 def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     """Add mlflow args will add arguments that are common to mlflow, and
     necessary for a pytorch-quik traveler. These can be set by command
@@ -137,7 +168,7 @@ def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     Args:
         parser (ArgumentParser): This is the parser from the PyTorch project.
         kwargs (dict, optional): Sometimes the individual project will want
-        to have default learning args. For instance, learning rate could be
+        to have default learning args. For instance, tracking uri could be
         set at the command line, if not by the PyTorch project, or if not it
         will be set here. If they are all set here, then kwargs defaults to {}.
 
