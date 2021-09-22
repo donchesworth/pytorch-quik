@@ -89,11 +89,18 @@ def get_tokenizer(
         Tokenizers: The tokenizer to be used by get_encodings.
     """
     bert_dict = BERT_MODELS[bert_type]
-    tokenizer = bert_dict["tokenizer"].from_pretrained(
-        pretrained_model_name_or_path=bert_dict["model-type"],
-        do_lower_case=True,
-        cache_dir=cache_dir,
-    )
+    for i in range(0, 3):
+        while True:
+            try:
+                tokenizer = bert_dict["tokenizer"].from_pretrained(
+                    pretrained_model_name_or_path=bert_dict["model-type"],
+                    do_lower_case=True,
+                    cache_dir=cache_dir,
+                )
+            except ValueError:
+                print("Connection error, trying again")
+                continue
+            break
     return tokenizer
 
 
