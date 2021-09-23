@@ -12,11 +12,17 @@ from torch import Tensor
 import torch
 from pytorch_quik import utils
 from pathlib import Path
+import logging
+import sys
 
 try:
     import cudf
 except ImportError:
     import dask_quik.dummy as cudf
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 ArrType = Union[
     np.ndarray, pd.Series, pd.DataFrame, cudf.DataFrame, torch.Tensor
@@ -52,7 +58,7 @@ def numpize_array(arr: ArrType) -> np.array:
     elif isinstance(arr, (pd.DataFrame, pd.Series)):
         arr = arr.to_numpy()
     elif isinstance(arr, torch.Tensor):
-        if arr.device.type == 'cuda':
+        if arr.device.type == "cuda":
             arr = arr.cpu()
         arr = arr.numpy()
     if len(arr.shape) == 2:
@@ -78,8 +84,10 @@ def accuracy_per_class(preds_array: ArrType, true_array: ArrType, label_dict):
     for nclass in np.unique(tarr):
         y_preds = parr[tarr == nclass]
         y_true = tarr[tarr == nclass]
-        print(f"Class: {label_dict[nclass]}")
-        print(f"Accuracy: {len(y_preds[y_preds==nclass])}/{len(y_true)}\n")
+        logger.info(f"Class: {label_dict[nclass]}")
+        logger.info(
+            f"Accuracy: {len(y_preds[y_preds==nclass])}/{len(y_true)}\n"
+        )
 
 
 def f1_score_func(preds_array: ArrType, true_array: ArrType) -> np.float64:
@@ -96,10 +104,16 @@ def f1_score_func(preds_array: ArrType, true_array: ArrType) -> np.float64:
     """
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
     f1 = f1_score(tarr, parr, average="weighted")
-    print(f"weighted f1 score {f1:.3f}")
+    logger.info(f"weighted f1 score {f1:.3f}")
 
 
-def matplotlib_gist_heat():
+def matplotlib_gist_heat() -> mclr.LinearSegmentedColormap:
+    """Create a matplotlib colormap similar to "heat" with some adjustments
+    to be used in a confusion matrix.
+
+    Returns:
+        mclr.LinearSegmentedColormap: A matplotlib colormap
+    """
     cmap = plt.get_cmap("gist_heat")
     new_cmap = mclr.LinearSegmentedColormap.from_list(
         "trunc({n},{a:.2f},{b:.2f})".format(n=cmap.name, a=0.01, b=0.9),
@@ -114,12 +128,16 @@ def matplotlib_confusion_matrix(
     save_loc: Optional[Path] = Path.cwd(),
     show_plot: Optional[bool] = False,
 ):
-    """Turn a confusion matrix into a matplotlib plot.
+    """Turn a confusion matrics into a matplotlib plot.
 
     Args:
         conf_matrix (np.ndarray): a 2d array of the confusion matrix
-        dirclasses (OrderedDict[int, str]): A list of chart labels for each
-            classification type
+        dir_classes (OrderedDict[int, str]): A list of chart labels for each
+        classification type
+        save_loc (Path, optional): The directory to save the plot. Defaults
+        to Path.cwd().
+        show_plot (bool, optional): Whether to show the plot in output.
+        Defaults to False.
     """
     heat_cmap = matplotlib_gist_heat()
     ticks = list(dir_classes.keys())
@@ -154,7 +172,7 @@ def pandas_confusion_matrix(
     """
     classes = dir_classes.values()
     labels = [pd.MultiIndex.from_product([[lbl], classes]) for lbl in LABELS]
-    pdcm = pd.DataFrame(conf_mat, *labels)
+    pdcm = pd.DataFrame(conf_matrix, *labels)
     return pdcm
 
 
@@ -206,7 +224,7 @@ def build_class_dict(
     [parr, tarr] = [numpize_array(x) for x in [preds_array, true_array]]
     tn = utils.inverse_dict(dir_classes)
     if print_report:
-        print(classification_report(tarr, parr, target_names=tn))
+        logger.info(classification_report(tarr, parr, target_names=tn))
     class_rpt = classification_report(
         tarr, parr, target_names=tn, output_dict=True
     )

@@ -1,12 +1,19 @@
 import torch
 from argparse import Namespace
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
+from torch import nn
 from pathlib import Path
 from datetime import date
 import json
 import numpy as np
 from contextlib import nullcontext
 from filelock import FileLock
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def id_str(
@@ -82,7 +89,7 @@ def load_torch_object(
     else:
         lock_type = nullcontext()
     device = getattr(args, "device", torch.device("cpu"))
-    print("loading " + torch_type + " " + str(device))
+    logger.info(f"loading {torch_type} {device}")
     filename = id_str(torch_type, args, epoch)
     if location:
         return filename
@@ -108,7 +115,7 @@ def load_tensor(
     Returns:
         Union[str, torch.Tensor]: [description]
     """
-    print("loading " + ttype + " " + str(args.device))
+    logger.info(f"loading {ttype} {args.device}")
     file_id = id_str(ttype, args)
     if loc_only:
         return file_id
@@ -116,19 +123,22 @@ def load_tensor(
         return torch.load(file_id)
 
 
-# def load_state_dict():
-#     sd_id = pq.utils.id_str("state_dict", args, epoch)
-#     state_dict = torch.load(sd_id, map_location=self.gpus.device)
-#     # DDP will leave module artifacts to be removed
-#     ddp_state_dict = {
-#         k.replace("module.", ""): v for k, v in state_dict.items()
-#     }
-#     self.model.load_state_dict(ddp_state_dict)
+def save_state_dict(
+    model: torch.nn.Module, args: Namespace, epoch: int
+) -> str:
+    """Save a model's state_dict to the appropriate directory.
 
+    Args:
+        model (torch.nn.Module): The torch model from which to pull the
+        state_dict.
+        args (Namespace): A list of arguments to build the id_str.
+        epoch (int): The epoch required for the filename.
 
-def save_state_dict(model, args: Namespace, epoch: int):
+    Returns:
+        str: A string with directory + filename.
+    """
     sd_id = id_str("state_dict", args, epoch)
-    print("saving epoch " + str(epoch) + " state")
+    logger.info(f"saving epoch {epoch} state")
     if hasattr(model, "module"):
         sd = model.module.state_dict()
     else:
@@ -138,21 +148,44 @@ def save_state_dict(model, args: Namespace, epoch: int):
 
 
 def save_test_array(Xte: np.array, yte: np.array, args: Namespace):
+    """Save the test array after splitting (Xte and yte) for future testing.
+
+    Args:
+        Xte (np.array): The input columns split for testing
+        yte (np.array): The label column split for testing
+        args (Namespace): A list of arugments to build the id_str
+    """
     filename = id_str("test_array", args)
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         np.save(f, Xte)
         np.save(f, yte)
 
 
-def load_test_array(args):
+def load_test_array(args: Namespace) -> Tuple(np.array, np.array):
+    """Load the previously split test arrays (Xte and yte) for testing.
+
+    Args:
+        args (Namespace): A list of arguments to build the id_str
+
+    Returns:
+        [type]: [description]
+    """
     filename = id_str("test_array", args)
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         Xte = np.load(f, allow_pickle=True)
         yte = np.load(f, allow_pickle=True)
     return Xte, yte
 
 
-def json_write(serve_path, filename, data):
+def json_write(serve_path: Path, filename: str, data: str):
+    """Simple function to write json output to the appropriate
+    directory and filename.
+
+    Args:
+        serve_path (Path): Directory for model archive building
+        filename (str): Filename for the json output
+        data (str): String with json data to be written
+    """
     file = Path.joinpath(serve_path, filename)
-    with open(file, 'w') as outfile:
+    with open(file, "w") as outfile:
         json.dump(data, outfile)

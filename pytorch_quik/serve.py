@@ -7,6 +7,12 @@ import shlex
 import subprocess
 import requests
 from urllib.parse import urlparse
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 EXTRA_FILES = [
     "config.json",
@@ -108,8 +114,7 @@ def mar_files(mar_path: Path, sfile: str, hfile: str) -> bool:
     if len(missing) == 0:
         return True
     else:
-        print("These files are missing:")
-        print(missing)
+        logger.info(f"These files are missing: \n{missing}")
         return False
 
 
@@ -180,4 +185,4 @@ def create_mar(
         """
         sp = subprocess.Popen(shlex.split(cmd), cwd=model_dir)
         sp.communicate()
-        print(f"torch archive {model_name}.mar created")
+        logger.info(f"torch archive {model_name}.mar created")

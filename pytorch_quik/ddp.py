@@ -8,16 +8,41 @@ import os
 from tqdm import tqdm
 import socket
 from contextlib import closing
+from typing import Optional
 
 
-def find_free_port():
+def find_free_port() -> int:
+    """Provide a free port for DDP setup.
+
+    Returns:
+        int: A free port number.
+    """
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
 
 
-def tq_bar(esteps, epoch=0, total_epochs=0, train=True):
+def tq_bar(
+    esteps: int,
+    epoch: Optional[int] = 0,
+    total_epochs: Optional[int] = 0,
+    train: Optional[bool] = True,
+) -> tqdm:
+    """Create a progress bar (tqdm) to keep track of a train, valid, or
+    test pass
+
+    Args:
+        esteps (int): The number of steps in the epoch for the bar.
+        epoch (int, optional): Epoch number for description. Defaults to 0.
+        total_epochs (int, optional): Total Epochs for description. Defaults
+        to 0.
+        train (bool, optional): Whether to use the epoch description. Defaults
+        to True.
+
+    Returns:
+        tqdm: a tqdm progress bar
+    """
     pbar = tqdm(total=esteps)
     if train:
         pbar.set_description(f"epoch: {epoch +1}/{total_epochs}")
@@ -85,8 +110,7 @@ def cleanup():
 
 # From pytorch 1.9.0
 def consume_prefix_in_state_dict_if_present(
-    state_dict: Dict[str, Any],
-    prefix: str
+    state_dict: Dict[str, Any], prefix: str
 ):
     r"""Strip the prefix in state_dict, if any.
     ..note::
@@ -100,11 +124,11 @@ def consume_prefix_in_state_dict_if_present(
     keys = sorted(state_dict.keys())
     for key in keys:
         if key.startswith(prefix):
-            newkey = key[len(prefix):]
+            newkey = key[len(prefix) :]
             state_dict[newkey] = state_dict.pop(key)
 
     # also strip the prefix in metadata if any.
-    if hasattr(state_dict, '_metadata'):
+    if hasattr(state_dict, "_metadata"):
         metadata = state_dict._metadata
         for key in list(metadata.keys()):
             # for the metadata dict, the key can be:
@@ -114,7 +138,6 @@ def consume_prefix_in_state_dict_if_present(
 
             if len(key) == 0:
                 continue
-            newkey = key[len(prefix):]
+            newkey = key[len(prefix) :]
             metadata[newkey] = metadata.pop(key)
         state_dict._metadata = metadata
-

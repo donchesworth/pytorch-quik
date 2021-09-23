@@ -9,16 +9,9 @@ from pytorch_quik import arg, ddp, io, metrics
 from contextlib import nullcontext
 from argparse import ArgumentParser, Namespace
 from typing import Any, Callable, Dict, Optional
-from dataclasses import dataclass, field, asdict, is_dataclass
-import os
+from dataclasses import dataclass, field, asdict
 from tqdm import tqdm
 from .mlflow import QuikMlflow
-import logging
-import sys
-
-logging.basicConfig(stream=sys.stdout)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -82,9 +75,12 @@ class QuikTrek:
     """
 
     def __init__(
-        self, gpu: Optional[int] = None, args: Optional[Namespace] = None,
-
+        self,
+        gpu: Optional[int] = None,
+        args: Optional[Namespace] = None,
     ):
+        """Constructor, primarily adding learning arguments
+        and creating dataclasses."""
         if args is None:
             parser = arg.add_learn_args(ArgumentParser())
             args = parser.parse_args()
@@ -93,12 +89,15 @@ class QuikTrek:
         self.create_dataclasses(gpu, args)
         self.trek_prep(args)
 
-    def create_dataclasses(self, gpu, args):
+    def create_dataclasses(self, gpu: int, args: Namespace):
+        """Create a World, DlKwargs, and OptKwargs dataclass"""
         self.world = World(
-            args.nr, args.nodes, gpu, args.gpus, getattr(
-                args, "use_ray_tune", False
-                )
-            )
+            args.nr,
+            args.nodes,
+            gpu,
+            args.gpus,
+            getattr(args, "use_ray_tune", False),
+        )
         self.dlkwargs = DlKwargs(
             batch_size=args.bs,
             num_workers=args.num_workers,
@@ -111,14 +110,24 @@ class QuikTrek:
         )
         self.args.device = self.world.device
 
-    def trek_prep(self, args):
+    def trek_prep(self, args: Namespace):
+        """Create the MLFlow run, clear the cuda cache,
+        and setup ddp (if ddp and not ray tune)."""
         if args.use_mlflow and self.world.is_logger:
             self.mlflow = QuikMlflow(self.args)
-            self.mlflow.create_run([self.dlkwargs, self.optkwargs, self.world,])
+            self.mlflow.create_run(
+                [
+                    self.dlkwargs,
+                    self.optkwargs,
+                    self.world,
+                ]
+            )
 
         if self.world.device.type == "cuda":
             torch.cuda.empty_cache()
-        if self.world.gpu_id is not None and not getattr(self.args, "use_ray_tune", False):
+        if self.world.gpu_id is not None and not getattr(
+            self.args, "use_ray_tune", False
+        ):
             torch.cuda.set_device(self.world.device)
             ddp.setup(self.world.gpu_id, self.world)
 
@@ -131,6 +140,8 @@ class QuikTraveler:
     metrics = metrics.LossMetrics(0.99)
 
     def __init__(self, trek, type: Optional[str] = None):
+        """Constructor, primarily adding learning arguments
+        and creating the QuikAmp."""
         self.type = type
         self.world = trek.world
         self.args = trek.args
@@ -143,6 +154,7 @@ class QuikTraveler:
         criterion_fcn: Callable[..., nn.Module],
         kwargs: Optional[Dict[str, Any]] = {},
     ):
+        """Add the criterion to the traveler"""
         if callable(criterion_fcn):
             self.criterion = criterion_fcn(**kwargs)
             self.criterion.to(self.world.device)
@@ -152,6 +164,7 @@ class QuikTraveler:
         optimizer_fcn: Callable[..., optim.Optimizer],
         kwargs: Optional[Dict[str, Any]] = {},
     ):
+        """Add the optimizer to the traveler"""
         if hasattr(self.model, "module"):
             self.optimizer = optimizer_fcn(
                 self.model.module.parameters(),
@@ -170,6 +183,7 @@ class QuikTraveler:
         scheduler_fcn: Callable[..., optim.Optimizer],
         kwargs: Optional[Dict[str, Any]] = {},
     ):
+        """Add the scheduler to the traveler"""
         self.scheduler = scheduler_fcn(
             self.optimizer,
             **kwargs,
@@ -180,6 +194,7 @@ class QuikTraveler:
         model: nn.Module,
         state_dict: Optional[Dict[str, torch.Tensor]] = None,
     ):
+        """Add the model to the traveler"""
         self.model = model
         if state_dict is not None:
             self.model.load_state_dict(state_dict)
@@ -193,6 +208,7 @@ class QuikTraveler:
             )
 
     def add_data(self, tensorDataset: td.TensorDataset):
+        """Add the dataloader (via QuikData) to the traveler"""
         self.data = QuikData(
             tensorDataset, self.world, self.trek.dlkwargs, self.trek.epochs
         )
@@ -200,6 +216,7 @@ class QuikTraveler:
             self.metrics.steps = self.data.steps
 
     def backward(self, loss: torch.Tensor, clip: Optional[bool] = True):
+        """Run the model.backward (plus consider a scaler)."""
         if hasattr(self.amp, "scaler"):
             self.amp.backward(self, loss, clip)
         else:
@@ -208,6 +225,7 @@ class QuikTraveler:
                 self.optimizer.step()
 
     def add_loss(self, loss: torch.Tensor, pbar: tqdm, epoch: int):
+        """Add the training loss to the model metrics."""
         self.metrics.add_loss(loss)
         if self.args.use_mlflow and pbar is not None:
             loss = self.metrics.metric_dict["train_loss"]
@@ -215,6 +233,7 @@ class QuikTraveler:
             self.trek.mlflow.log_metric("train_loss", loss, step)
 
     def add_vloss(self, vlosses, nums, epoch):
+        """Add the valid loss to the model metrics."""
         self.metrics.add_vloss(vlosses, nums)
         if self.args.use_mlflow and self.world.is_logger:
             vloss = self.metrics.metric_dict["valid_loss"]
@@ -222,6 +241,7 @@ class QuikTraveler:
             self.trek.mlflow.log_metric("valid_loss", vloss, step)
 
     def save_state_dict(self, epoch):
+        """ "Run save_state_dict within the traveler"""
         sd_id = io.save_state_dict(self.model, self.args, epoch)
         if self.args.use_mlflow and self.world.is_logger:
             self.trek.mlflow.log_artifact(str(sd_id))
@@ -233,6 +253,8 @@ class QuikTraveler:
         f1: Optional[bool] = True,
         confusion: Optional[bool] = True,
     ):
+        """Record the confusion matrix and classification report both in
+        MLFlow and in the traveler."""
         cm_id = io.id_str("confusion", self.args)
         self.cm = metrics.build_confusion_matrix(
             self.data.predictions,
@@ -263,6 +285,7 @@ class QuikData:
         dlkwargs: Dict[str, Any],
         epochs: int,
     ):
+        """Constructor, primarily adding the dataset and dataloader."""
         self.dataset = tensorDataset
         self.labels = self.dataset.tensors[2].cpu().numpy()
         self.dlkwargs = dlkwargs
@@ -271,6 +294,7 @@ class QuikData:
         self.total_steps = self.steps * epochs
 
     def add_sampler(self, world, sampler_fcn=None, kwargs={}):
+        """Adds the data sampler to the data"""
         if world.is_ddp:
             self.sampler = ddist.DistributedSampler(
                 self.dataset,
@@ -283,6 +307,7 @@ class QuikData:
             self.sampler = sampler_fcn
 
     def add_data_loader(self, world):
+        """Adds the data loader to the data"""
         if not hasattr(self, "sampler"):
             self.add_sampler(world)
         self.data_loader = td.DataLoader(
@@ -292,6 +317,7 @@ class QuikData:
         )
 
     def add_results(self, predictions: torch.Tensor, labels: torch.Tensor):
+        """Adds the predictions df and labels df to the data"""
         self.predictions = predictions
         self.labels = labels
 
@@ -303,6 +329,9 @@ class QuikAmp:
     """
 
     def __init__(self, mixed_precision: bool):
+        """Constructor, add the automatic mixed precision values of scaler and
+        autocast. If there's no amp, it adds a nullcontext as a callable for
+        the with statement."""
         if mixed_precision:
             self.scaler = GradScaler()
             self.caster = autocast()
@@ -315,6 +344,7 @@ class QuikAmp:
         loss: torch.Tensor,
         clip: Optional[bool] = True,
     ):
+        """Backward propogation with automatic mixed precision."""
         self.scaler.scale(loss).backward()
         # https://pytorch.org/docs/stable/notes/amp_examples.html#working-with-unscaled-gradients
         if clip:

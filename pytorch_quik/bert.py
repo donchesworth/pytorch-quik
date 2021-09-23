@@ -1,6 +1,5 @@
 import numpy as np
 from torch import Tensor
-from torch._C import Value
 from transformers import (
     BertTokenizer,
     RobertaTokenizer,
@@ -9,7 +8,7 @@ from transformers import (
     BatchEncoding,
     PreTrainedTokenizer,
     PreTrainedModel,
-    logging,
+    logging as tlog,
 )
 from typing import Optional, List, Union, Dict
 import shutil
@@ -18,6 +17,12 @@ import json
 from . import io, ddp
 from argparse import Namespace
 from torch.nn.parallel import DistributedDataParallel as DDP
+import sys
+import logging
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 Tokenizers = Union[BertTokenizer, RobertaTokenizer]
 Models = Union[BertForSequenceClassification, RobertaForSequenceClassification]
@@ -98,13 +103,20 @@ def get_tokenizer(
                     cache_dir=cache_dir,
                 )
             except ValueError:
-                print("Connection error, trying again")
+                logger.info("Connection error, trying again")
                 continue
             break
     return tokenizer
 
 
-def save_tokenizer(tokenizer, data_path):
+def save_tokenizer(tokenizer: Tokenizers, data_path: Path):
+    """Serving a torch model requires saving the tokenizer, and
+    it needs to be in the path that the model archive is built.
+
+    Args:
+        tokenizer (Tokenizers): The BERT or RoBERTa tokenizer used
+        data_path (Path): The location for building the model archive
+    """
     serve_path = data_path.joinpath("serve")
     tokenizer.save_pretrained(serve_path)
     configpath = Path(serve_path).joinpath("tokenizer_config.json")
@@ -122,18 +134,28 @@ def save_bert_model(
     model: PreTrainedModel,
     args: Namespace,
     best_epoch: int,
-    serve_path: Optional[Path] = None
+    serve_path: Optional[Path] = None,
 ):
+    """Serving a torch model requires saving the model, and
+    it needs to be in the path that the model archive is built.
+
+    Args:
+        model (PreTrainedModel): The BERT or RoBERTa model (for this
+        purpose post-training)
+        args (Namespace): The list of arguments for building paths
+        best_epoch (int): The epoch from which to pull the state_dict
+        serve_path (Path, optional): Directory to store files for building
+        the model archive. Defaults to None.
+    """
     if isinstance(model, DDP):
         model = model.module
     if serve_path is None:
         serve_path = io.id_str("", args).parent
     state_dict = io.load_torch_object("state_dict", args, best_epoch)
-    if 'module.classifier.bias' in state_dict:
-        print("yes module")
+    if "module.classifier.bias" in state_dict:
+        logger.info("Removing distribution from model")
         state_dict = ddp.consume_prefix_in_state_dict_if_present(
-            state_dict,
-            "module."
+            state_dict, "module."
         )
     model.save_pretrained(save_directory=serve_path, state_dict=state_dict)
 
@@ -184,7 +206,7 @@ def get_pretrained_model(
     """
     num_lbls = len(np.unique(labels))
     bert_dict = BERT_MODELS[bert_type]
-    logging.set_verbosity_error()
+    tlog.set_verbosity_error()
     for i in range(0, 3):
         while True:
             try:
@@ -195,7 +217,7 @@ def get_pretrained_model(
                     output_hidden_states=False,
                 )
             except ValueError:
-                print("Connection error, trying again")
+                logger.info("Connection error, trying again")
                 continue
             break
     return model

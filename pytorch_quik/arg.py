@@ -129,7 +129,7 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
 
 
 def add_ray_tune_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
-    """Add ray tune args will add arguments that are common to ray tune, 
+    """Add ray tune args will add arguments that are common to ray tune,
     and necessary for a pytorch-quik traveler. These can be set by command
     line, or can be defaulted in a script, or the defaults here can be
     used.
@@ -156,7 +156,6 @@ def add_ray_tune_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         help="The number of ray tune hyperparameter permutations to be trained",
     )
     return parser
-
 
 
 def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
@@ -190,7 +189,7 @@ def add_mlflow_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "-u",
         "--user",
-        default=kwargs.get("user", popen('whoami').read().strip()),
+        default=kwargs.get("user", popen("whoami").read().strip()),
         type=str,
         help="The name of the mlflow experiment (default is Default)",
     )

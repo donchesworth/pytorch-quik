@@ -9,6 +9,12 @@ from argparse import Namespace
 from pathlib import Path
 from . import io
 from types import SimpleNamespace
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -37,6 +43,7 @@ class QuikMlflow:
         self,
         args: Namespace,
     ):
+        """Constructor, primarily adding MLFlow arguments"""
         self.mlfkwargs = MlfKwargs(
             tracking_uri=args.tracking_uri,
             endpoint_url=args.endpoint_url,
@@ -58,6 +65,8 @@ class QuikMlflow:
             self.expid = exp.experiment_id
 
     def create_run(self, params: list):
+        """Using MLFLow Tracking create_fun, plus adding tags, parameters,
+        and saving the run_id."""
         self.tags = self.add_tags(tags={})
         self.run = self.client.create_run(self.expid, tags=self.tags)
         self.runid = self.run.info.run_id
@@ -65,8 +74,10 @@ class QuikMlflow:
             self.log_parameters(params)
 
     def add_tags(
-        self, tags: Dict[str, str],
+        self,
+        tags: Dict[str, str],
     ) -> Dict[str, str]:
+        """Adding tags for MLFLow create run."""
         tags = {"mlflow.user": self.mlfkwargs.user}
         if self.mlfkwargs.parent_run is not None:
             tags["mlflow.parentRunId"] = self.mlfkwargs.parent_run
@@ -75,6 +86,7 @@ class QuikMlflow:
         return tags
 
     def log_parameters(self, dclasses):
+        """Add parameters to MLFlow run using the dataclasses object"""
         for dclass in dclasses:
             if is_dataclass(dclass):
                 dclass = asdict(dclass)
@@ -86,15 +98,20 @@ class QuikMlflow:
     def log_metric(
         self, key: str, metric: Union[str, int], step: Optional[int] = None
     ):
+        """Log an MLFlow metric"""
         self.client.log_metric(self.runid, key, metric, step=step)
 
     def log_artifact(self, filename: Union[str, Path]):
+        """Log an MLFlow artifact"""
         self.client.log_artifact(self.runid, str(filename))
 
     def end_run(self):
+        """Mark an MLFlow run as completed"""
         self.client.set_terminated(self.runid)
 
     def update_run_status(self, status: str):
+        """Use the MLFlow set_terminated function to instead mark an MLFlow
+        run a new status"""
         self.client.set_terminated(self.runid, status)
 
     def search_runs(
@@ -104,8 +121,8 @@ class QuikMlflow:
         order_by: Optional[str] = None,
     ) -> dict:
         """This allows you to search existing runs by a parameter (params.*)
-        or a metric (metrics.*), for instance filter_string="params.lr = '1.6e-06'"
-        """
+        or a metric (metrics.*), for instance filter_string="params.lr =
+        '1.6e-06'"""
         out = self.client.search_runs(
             self.expid,
             filter_string=filter_string,
@@ -122,13 +139,17 @@ class QuikMlflow:
         ioargs: Optional[Namespace] = None,
         serve_path: Optional[Union[str, Path]] = None,
     ) -> str:
+        """This function will pull a state_dict artifact from a completed
+        MLFlow run."""
         if run_id is None:
             if filter_string is None:
-                print("please supply either a run_id or filter_string")
+                logger.info("please supply either a run_id or filter_string")
                 return None
             runs = self.search_runs(filter_string)
             if len(runs) > 1:
-                print("query returned multiple runs, please update the filter")
+                logger.info(
+                    "query returned multiple runs, please update the filter"
+                )
                 return None
             else:
                 run_id = runs[0].info.run_id
@@ -142,8 +163,6 @@ class QuikMlflow:
             if epoch_str in art.path:
                 path = art.path
         self.client.download_artifacts(
-            run_id,
-            path,
-            dst_path=serve_path.parent
+            run_id, path, dst_path=serve_path.parent
         )
-        return path.split(epoch_str)[1].split('.')[0]
+        return path.split(epoch_str)[1].split(".")[0]
