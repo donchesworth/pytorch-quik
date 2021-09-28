@@ -6,19 +6,6 @@ import pandas as pd
 import pytest
 
 
-def test_dir_classes(senti_classes):
-    raw_classes = list(senti_classes.values())
-    dir_classes = pq.metrics.direct_dict(raw_classes)
-    assert isinstance(dir_classes, OrderedDict)
-    assert dir_classes == senti_classes
-
-
-def test_inv_classes(senti_classes, inv_senti_classes):
-    inv_classes = pq.metrics.inverse_dict(senti_classes)
-    assert isinstance(inv_classes, OrderedDict)
-    assert inv_classes == inv_senti_classes
-
-
 def test_choose_a_class():
     cc = torch.rand(100, 100)
     cc = pq.metrics.choose_a_class(cc)
@@ -44,16 +31,16 @@ def test_numpize_array(args):
     )
 
 
-def test_show_confusion_matrix(
+def test_build_confusion_matrix(
     final_cmdf, sample_preds, sample_labels, senti_classes
 ):
-    cm = pq.metrics.show_confusion_matrix(
+    cm = pq.metrics.build_confusion_matrix(
         sample_preds, sample_labels, senti_classes)
-    assert cm.equals(final_cmdf)
+    assert np.array_equal(cm, final_cmdf)
 
 
-@pytest.mark.mpl_image_compare
-def test_matplotlib_confusion_matrix(final_cmdf, senti_classes):
-    npdf = final_cmdf.to_numpy()
-    cm = pq.metrics.matplotlib_confusion_matrix(npdf, senti_classes)
-    return cm
+# @pytest.mark.mpl_image_compare
+# def test_matplotlib_confusion_matrix(final_cmdf, senti_classes):
+#     npdf = final_cmdf.to_numpy()
+#     cm = pq.metrics.matplotlib_confusion_matrix(npdf, senti_classes)
+#     return cm

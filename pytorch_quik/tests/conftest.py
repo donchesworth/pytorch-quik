@@ -1,5 +1,7 @@
 from pathlib import Path
 import pytest
+from pytorch_quik import arg
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import pandas as pd
 import numpy as np
 import torch
@@ -16,39 +18,55 @@ FINAL = TESTDIR.joinpath("final_data.json")
 
 # def pytest_generate_tests(metafunc):
 #     metafunc.parametrize("gpus", [0, 1])
-@pytest.fixture(params=[0, 1])
-def gpus(request):
+@pytest.fixture(params=[None, 0])
+def gpu(request):
     return request.param
 
 
 @pytest.fixture
-def args(gpus):
+def args(gpu):
     """sample args namespace"""
-    args = Namespace()
-    args.gpus = gpus
+    # args = Namespace()
+    # args.gpus = gpus
+    # args.data_date = 20210101
+    # args.epochs = 2
+    # args.nr = 0
+    # args.nodes = 1
+    # args.bs = 12
+    # args.num_workers = 0
+    # args.learning_rate = 5e-5
+    # args.lr = 5e-5
+    # args.eps = 1e-4
+    # args.betas = (0.90, 0.99)
+    # args.weight_decay = 0
+    # args.mixed_precision = True
+    # args.find_unused_parameters = False
+    # args.use_mlflow = True
+    # args.use_ray_tune = False
+    # return args
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = arg.add_ddp_args(parser)
+    parser = arg.add_learn_args(parser)
+    parser = arg.add_mlflow_args(parser)
+    parser = arg.add_ray_tune_args(parser)
+    args = parser.parse_args()
+    args.bert_type = "roberta"
     args.data_date = 20210101
-    args.epochs = 2
-    args.has_gpu = system("nvidia-smi -L") == 0
-    if not args.has_gpu:
+    args.gpu = gpu
+    if args.gpu is not None:
+        args.has_gpu = True
+        args.gpus = 1
+    else:
+        args.has_gpu = False
+        args.gpus = 0
         warnings.warn(
             "GPU not found, setting has_gpu to False. \
             Some tests will be skipped"
         )
-        args.device = torch.device('cpu')
-    else:
-        args.device = torch.device('cuda', 0)
-    args.nr = 0
-    args.nodes = 1
-    args.bs = 12
-    args.num_workers = 0
-    args.learning_rate = 5e-5
-    args.lr = 5e-5
-    args.eps = 1e-4
-    args.betas = (0.90, 0.99)
-    args.weight_decay = 0
-    args.mixed_precision = True
-    args.find_unused_parameters = False
-    args.bert_type = "roberta"
+    args.num_workers = 2
+    args.use_init_group = True
+    args.use_mlflow = False
+    args.use_ray_tune = False
     return args
 
 
