@@ -9,6 +9,7 @@ pytest-cov
 pytest-mpl
 pytest-lazy-fixture
 codecov
+numpy>=1.21.0
 bump2version
 mlflow
 ray[tune]
