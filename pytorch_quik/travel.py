@@ -26,6 +26,7 @@ class World:
     rank_id: int = field(init=False)
     world_size: int = field(init=False)
     use_ray_tune: bool = False
+    use_init_group: bool = False
     is_ddp: bool = field(init=False)
     is_logger: bool = field(init=False)
 
@@ -97,6 +98,7 @@ class QuikTrek:
             gpu,
             args.gpus,
             getattr(args, "use_ray_tune", False),
+            getattr(args, "use_init_group", False),
         )
         self.dlkwargs = DlKwargs(
             batch_size=args.bs,

@@ -161,7 +161,7 @@ def save_test_array(Xte: np.array, yte: np.array, args: Namespace):
         np.save(f, yte)
 
 
-def load_test_array(args: Namespace) -> Tuple(np.array, np.array):
+def load_test_array(args: Namespace) -> Tuple[np.array, np.array]:
     """Load the previously split test arrays (Xte and yte) for testing.
 
     Args:

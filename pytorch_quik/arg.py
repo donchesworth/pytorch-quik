@@ -25,6 +25,61 @@ def beta_type(strings: str) -> tuple:
     return tuple(mapped_beta)
 
 
+def add_ddp_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
+    """Add ddp args will add arguments that are common to PyTorch
+    DistributedDataParallel, and necessary for a pytorch-quik trek. These can
+    be set by command line, or can be defaulted in a script, or the defaults
+    here can be used.
+
+    Args:
+        parser (ArgumentParser): This is the parser from the PyTorch project.
+        kwargs (dict, optional): Sometimes the individual project will want
+        to have default ddp args. For instance, use_init_group could be
+        set at the command line, if not by the PyTorch project, or if not it
+        will be set here. If they are all set here, then kwargs defaults to {}.
+
+    Returns:
+        ArgumentParser: The same ArgumentParser but with loaded learning args.
+    """
+
+    parser.add_argument(
+        "--use_init_group",
+        dest="use_ray_tune",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-nr",
+        "--nr",
+        default=0,
+        type=int,
+        help="ranking within the nodes",
+    )
+    parser.add_argument(
+        "-n",
+        "--nodes",
+        default=1,
+        type=int,
+        metavar="N",
+        help="number of data loading workers (default: 4)",
+    )
+    parser.add_argument(
+        "-g",
+        "--gpus",
+        default=dq.utils.gpus(),
+        type=int,
+        help="number of gpus per node",
+    )
+    parser.add_argument(
+        "-nw",
+        "--num_workers",
+        # default=torch.get_num_threads(),
+        default=kwargs.get("num_workers", 0),
+        type=int,
+        help="number of workers",
+    )
+    return parser
+
+
 def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     """Add learn args will add arguments that are common to PyTorch, and
     necessary for a pytorch-quik traveler. These can be set by command
@@ -48,28 +103,6 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         type=int,
         metavar="N",
         help="number of total epochs to run (2, 3, 5)",
-    )
-    parser.add_argument(
-        "-nr",
-        "--nr",
-        default=0,
-        type=int,
-        help="ranking within the nodes",
-    )
-    parser.add_argument(
-        "-n",
-        "--nodes",
-        default=1,
-        type=int,
-        metavar="N",
-        help="number of data loading workers (default: 4)",
-    )
-    parser.add_argument(
-        "-g",
-        "--gpus",
-        default=dq.utils.gpus(),
-        type=int,
-        help="number of gpus per node",
     )
     parser.add_argument(
         "-amp",
@@ -111,14 +144,6 @@ def add_learn_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         default=kwargs.get("eps", 1e-08),
         type=float,
         help="weight decay for an optimizer",
-    )
-    parser.add_argument(
-        "-nw",
-        "--num_workers",
-        # default=torch.get_num_threads(),
-        default=kwargs.get("num_workers", 0),
-        type=int,
-        help="number of workers",
     )
     parser.add_argument(
         "--find_unused_parameters",

@@ -8,7 +8,9 @@ import os
 from tqdm import tqdm
 import socket
 from contextlib import closing
+from pathlib import Path
 from typing import Optional
+import warnings
 
 
 def find_free_port() -> int:
@@ -86,18 +88,22 @@ def setup(gpu: str, args: Union[Namespace, NamedTuple]):
         gpu (str): The current gpu
         args (Union[Namespace, NamedTuple]): The gpu parameters
     """
+    master_port = find_free_port()
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(find_free_port())
+    os.environ["MASTER_PORT"] = str(master_port)
     os.environ["NCCL_P2P_LEVEL"] = "0"
 
+    if args.use_init_group:
+        init_method = Path.cwd().joinpath("init")
+        init_method.mkdir(parents=True, exist_ok=True)
+    else:
+        init_method = "env://"
     dist.init_process_group(
         backend="nccl",
-        init_method="env://",
-        # init_method='file:///mnt/init/' + str(args.master_port),
+        init_method=f"file://{init_method}/{master_port}",
         world_size=args.world_size,
         rank=args.rank_id,
     )
-
     # Explicitly setting seed to make sure that models created in two processes
     # start from same random weights and biases.
     torch.manual_seed(42)
