@@ -67,6 +67,9 @@ def args(gpu):
     args.use_init_group = True
     args.use_mlflow = False
     args.use_ray_tune = False
+    args.sched_kwargs = {
+        "num_warmup_steps": 10,
+    }
     return args
 
 

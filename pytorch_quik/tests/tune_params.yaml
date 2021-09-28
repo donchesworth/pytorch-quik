@@ -1,0 +1,23 @@
+bert_type:
+    choice:
+        categories: ["bert", "roberta"]
+lr:
+    loguniform:
+        lower: 1e-6
+        upper: 2e-5
+bs:
+    choice:
+        categories: [8, 12, 16, 24]
+beta_max:
+    choice:
+        categories: [0.99, 0.999]
+eps:
+    loguniform:
+        lower: 1e-6
+        upper: 1e-8
+weight_decay:
+    choice:
+        categories: [0, 0.001]
+epochs:
+    choice:
+        categories: [4, 5]
