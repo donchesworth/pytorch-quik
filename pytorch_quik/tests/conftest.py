@@ -10,6 +10,7 @@ from argparse import Namespace
 from os import system
 import warnings
 from collections import OrderedDict
+import sys
 
 TESTDIR = Path(__file__).parent
 SAMPLE = TESTDIR.joinpath("sample_data.json")
@@ -44,6 +45,7 @@ def args(gpu):
     # args.use_mlflow = True
     # args.use_ray_tune = False
     # return args
+    sys.argv = ['']
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser = arg.add_ddp_args(parser)
     parser = arg.add_learn_args(parser)
