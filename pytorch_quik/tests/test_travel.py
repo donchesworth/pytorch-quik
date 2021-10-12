@@ -8,6 +8,7 @@ from pytorch_quik.travel import (
 )
 from pytorch_quik.ddp import cleanup
 from pytorch_quik.bert import get_pretrained_model, BERT_MODELS
+import dask_quik as dq
 from torch.utils import data
 import torch.utils.data as td
 from torch import nn
@@ -16,6 +17,7 @@ from transformers import (
     get_linear_schedule_with_warmup,
     logging as tlog,
 )
+import pytest
 
 
 # def test_quik_model_ml(args, sample_labels):
@@ -39,6 +41,9 @@ from transformers import (
 
 
 def test_quik_trek(args):
+    if bool(args.gpus) and dq.utils.gpus() == 0:
+        print("unable to test dask_cudf portion")
+        pytest.skip()
     myqt = QuikTrek(args.gpu, args)
     assert isinstance(myqt, QuikTrek)
     assert isinstance(myqt.epochs, int)
