@@ -40,8 +40,8 @@ def test_build_confusion_matrix(
     assert np.array_equal(cm, final_cmdf)
 
 
-# @pytest.mark.mpl_image_compare
-# def test_matplotlib_confusion_matrix(final_cmdf, senti_classes):
-#     npdf = final_cmdf.to_numpy()
-#     cm = pq.metrics.matplotlib_confusion_matrix(npdf, senti_classes)
-#     return cm
+@pytest.mark.mpl_image_compare
+def test_matplotlib_confusion_matrix(final_cmdf, senti_classes):
+    npdf = final_cmdf.to_numpy()
+    cm = pq.metrics.matplotlib_confusion_matrix(npdf, senti_classes)
+    return cm
