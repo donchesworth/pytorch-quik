@@ -75,6 +75,13 @@ def args(gpu):
     return args
 
 
+@pytest.fixture
+def test_file(args):
+    fn = f"test_tensor_{args.data_date}.pt"
+    fn = Path(__file__).parent.joinpath("data", args.bert_type, fn)
+    return fn
+
+
 @pytest.fixture(scope='session')
 def senti_classes():
     """sentiment classes"""

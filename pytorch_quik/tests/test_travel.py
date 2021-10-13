@@ -20,29 +20,6 @@ from transformers import (
 import pytest
 
 
-def test_quik_model_ml(args, sample_labels):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_model_ml portion")
-        pytest.skip()
-    myqt = QuikTrek(args.gpu, args)
-    myqtr = QuikTraveler(myqt, "pytest")
-    tlog.set_verbosity_error()
-    model = get_pretrained_model(
-        labels=sample_labels,
-        bert_type=args.bert_type
-    )
-    myqtr.add_model(model)
-    myqtr.set_criterion(nn.CrossEntropyLoss)
-    myqtr.set_optimizer(AdamW)
-    args.sched_kwargs["num_training_steps"] = 100
-    myqtr.set_scheduler(get_linear_schedule_with_warmup, args.sched_kwargs)
-    assert(isinstance(model, BERT_MODELS[args.bert_type]["model"]))
-    assert(isinstance(myqtr.criterion, nn.CrossEntropyLoss))
-    assert(isinstance(myqtr.optimizer, AdamW))
-    if args.gpu is not None:
-        cleanup()
-
-
 def test_quik_trek(args):
     if bool(args.gpus) and dq.utils.gpus() == 0:
         print("unable to test quik_trek portion")
@@ -81,3 +58,40 @@ def test_quik_data(sample_tensor, sample_labels, args):
     assert(isinstance(myqtr.data.data_loader, data.DataLoader))
     if args.gpu is not None:
         cleanup()
+
+
+def test_quik_model_ml(args, sample_labels):
+    if bool(args.gpus) and dq.utils.gpus() == 0:
+        print("unable to test quik_model_ml portion")
+        pytest.skip()
+    myqt = QuikTrek(args.gpu, args)
+    myqtr = QuikTraveler(myqt, "pytest")
+    tlog.set_verbosity_error()
+    model = get_pretrained_model(
+        labels=sample_labels,
+        bert_type=args.bert_type
+    )
+    myqtr.add_model(model)
+    myqtr.set_criterion(nn.CrossEntropyLoss)
+    myqtr.set_optimizer(AdamW)
+    args.sched_kwargs["num_training_steps"] = 100
+    myqtr.set_scheduler(get_linear_schedule_with_warmup, args.sched_kwargs)
+    assert(isinstance(model, BERT_MODELS[args.bert_type]["model"]))
+    assert(isinstance(myqtr.criterion, nn.CrossEntropyLoss))
+    assert(isinstance(myqtr.optimizer, AdamW))
+    if args.gpu is not None:
+        cleanup()
+
+
+def test_quik_state_dict(args, sample_labels):
+    if bool(args.gpus) and dq.utils.gpus() == 0:
+        print("unable to test quik_model_ml portion")
+        pytest.skip()
+    myqt = QuikTrek(args.gpu, args)
+    myqtr = QuikTraveler(myqt, "pytest")
+    model = get_pretrained_model(
+        labels=sample_labels,
+        bert_type=args.bert_type
+    )
+    myqtr.add_model(model)
+    myqtr.save_state_dict("orig")
