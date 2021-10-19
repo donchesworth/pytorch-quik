@@ -12,9 +12,13 @@ import warnings
 from collections import OrderedDict
 import sys
 
+# bd = Path("/workspaces/rdp-vscode-devcontainer/pytorch-quik")
+# TESTDIR = bd.joinpath("pytorch_quik", "tests")
 TESTDIR = Path(__file__).parent
 SAMPLE = TESTDIR.joinpath("sample_data.json")
 FINAL = TESTDIR.joinpath("final_data.json")
+ENCODING = TESTDIR.joinpath("sample_encoding.pt")
+AMASK = TESTDIR.joinpath("sample_amask.pt")
 
 
 # def pytest_generate_tests(metafunc):
@@ -27,31 +31,20 @@ def gpu(request):
 @pytest.fixture
 def args(gpu):
     """sample args namespace"""
-    # args = Namespace()
-    # args.gpus = gpus
-    # args.data_date = 20210101
-    # args.epochs = 2
-    # args.nr = 0
-    # args.nodes = 1
-    # args.bs = 12
-    # args.num_workers = 0
-    # args.learning_rate = 5e-5
-    # args.lr = 5e-5
-    # args.eps = 1e-4
-    # args.betas = (0.90, 0.99)
-    # args.weight_decay = 0
-    # args.mixed_precision = True
-    # args.find_unused_parameters = False
-    # args.use_mlflow = True
-    # args.use_ray_tune = False
-    # return args
     sys.argv = ['']
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    MLKWARGS = {
+        "experiment": "nps-sentiment",
+        "user": "dcheswor",
+        "tracking_uri": "http://ceean-1.gsslab.rdu2.redhat.com:5000",
+        "endpoint_url": "https://s3.upshift.redhat.com",
+    }   
     parser = arg.add_ddp_args(parser)
     parser = arg.add_learn_args(parser)
-    parser = arg.add_mlflow_args(parser)
+    parser = arg.add_mlflow_args(parser, kwargs=MLKWARGS)
     parser = arg.add_ray_tune_args(parser)
     args = parser.parse_args()
+    args.mixed_precision = False
     args.bert_type = "roberta"
     args.data_date = 20210101
     args.gpu = gpu
@@ -90,6 +83,13 @@ def senti_classes():
 
 
 @pytest.fixture(scope='session')
+def two_classes():
+    """sentiment classes"""
+    two_classes = OrderedDict([(0, 'Negative'), (1, 'Positive')])
+    return two_classes
+
+
+@pytest.fixture(scope='session')
 def inv_senti_classes():
     """inverse sentiment classes"""
     inv_classes = OrderedDict([('Negative', 0), ('Neutral', 1), ('Positive', 2)])
@@ -98,7 +98,7 @@ def inv_senti_classes():
 
 @pytest.fixture(scope="session")
 def sample_tensor():
-    """sample tensor dataset"""
+    """sample tensor"""
     torch.manual_seed(0)
     return torch.rand(200, 64)
 
@@ -113,6 +113,14 @@ def sample_preds():
     noise = torch.zeros(200, 3, dtype=torch.float64)
     noise = noise + (0.1**0.9)*torch.randn(200, 3)
     return p + noise
+
+
+@pytest.fixture(scope="session")
+def sample_tds(sample_tensor, sample_preds):
+    """sample tensor dataset"""
+    return torch.utils.data.TensorDataset(
+        sample_tensor, sample_tensor, sample_preds
+        )
 
 
 @pytest.fixture(scope="session")
@@ -135,12 +143,49 @@ def sample_data():
 
 
 @pytest.fixture(scope="session")
+def sample_encoding():
+    """sample encoded tensors from tokenizer"""
+    enc = {
+        "input_ids": torch.load(ENCODING),
+        "attention_mask": torch.load(AMASK)
+    }
+    return enc
+
+
+@pytest.fixture(scope="session")
+def sample_ins(sample_encoding):
+    """sample encoded tensor input_ids from tokenizer"""
+    ins = sample_encoding["input_ids"]
+    return ins
+
+
+@pytest.fixture(scope="session")
+def sample_amask(sample_encoding):
+    """sample encoded tensor attention_masks from tokenizer"""
+    amask = sample_encoding["attention_mask"]
+    return amask
+
+
+@pytest.fixture(scope="session")
 def final_data():
     """final user/item dataset"""
     with open(FINAL) as f:
         df = pd.DataFrame(json.load(f))
     df.index.names = ["ui_index"]
     return df
+
+
+@pytest.fixture(scope="session")
+def tens_labels(final_data):
+    """sample tensor labels from final user/item dataset"""
+    tens = torch.LongTensor(final_data.label.values)
+    return tens
+
+
+@pytest.fixture(scope="session")
+def batch(sample_ins, sample_amask, tens_labels):
+    """sample batch for model training"""
+    return [sample_ins, sample_amask, tens_labels]
 
 
 @pytest.fixture(scope="session")

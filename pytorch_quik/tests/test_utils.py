@@ -28,3 +28,12 @@ def test_inv_classes(senti_classes, inv_senti_classes):
     inv_classes = pq.utils.inverse_dict(senti_classes)
     assert isinstance(inv_classes, OrderedDict)
     assert inv_classes == inv_senti_classes
+
+
+def test_txt_format():
+    raw_txt = ["Great company with fast support",
+               "Not great company with slow support"]
+    txt = pq.utils.txt_format(raw_txt)
+    output = '{"instances":[{"data": "Great company with fast support"}, ' \
+        '{"data": "Not great company with slow support"}]}'
+    assert txt == output
