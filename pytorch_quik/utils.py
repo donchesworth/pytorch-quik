@@ -1,5 +1,6 @@
 import time
-from typing import Union, Dict, Tuple, OrderedDict
+from typing import Union, Dict, Tuple, OrderedDict, List
+import json
 
 
 def sec_str(st: float) -> str:
@@ -52,3 +53,17 @@ def inverse_dict(
     """
     dict_inverse = {v: k for k, v in dict_direct.items()}
     return OrderedDict(dict_inverse)
+
+
+def txt_format(txt_arr: List[str]) -> str:
+    """Format text to be predicted in a way that the serving API expects
+
+    Args:
+        txt_arr (List[str]): A list of texts
+
+    Returns:
+        str: A formatted string for the serving API
+    """
+    txt = f'{{"instances":' \
+        f'{json.dumps([{"data": text} for text in txt_arr])}}}'
+    return txt

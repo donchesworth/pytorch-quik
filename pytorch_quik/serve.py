@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from pytorch_quik import bert, io
+from pytorch_quik import bert, io, utils
 from typing import Optional, List, OrderedDict, KeysView
 from argparse import Namespace
 import shlex
@@ -47,20 +47,6 @@ def save_index_to_name(serve_path: str, indexed_labels: OrderedDict[int, str]):
     io.json_write(serve_path, "index_to_name.json", indexed_labels)
 
 
-def inference_data(data: List[str]) -> str:
-    """Format any data into an inference-ready json
-
-    Args:
-        data (List[str]): a list of inputs
-
-    Returns:
-        str: the final json-ready inference data.
-    """
-    dlist = [{"data": text} for text in data]
-    data = f'{{"instances": {json.dumps(dlist)}}}'
-    return data
-
-
 def save_sample(serve_path):
     """A sample input to test the serving model
 
@@ -68,7 +54,7 @@ def save_sample(serve_path):
         serve_path (str): The directory to store the sample.
     """
     sample = ["Great company with fast support"]
-    sample = inference_data(sample)
+    sample = utils.txt_format(sample)
     io.json_write(serve_path, "sample_text.json", sample)
 
 

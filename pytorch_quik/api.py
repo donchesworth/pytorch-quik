@@ -1,3 +1,4 @@
+import pytorch_quik as pq
 import multiprocessing as mp
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -7,7 +8,6 @@ from multiprocessing.connection import Connection
 import pandas as pd
 import numpy as np
 from math import ceil
-import json
 from pandas.io.json import json_normalize
 import logging
 import sys
@@ -67,10 +67,7 @@ def split_and_format(arr: np.array, length: int) -> List[str]:
     """
     splits = ceil(len(arr) / length)
     arr_list = np.array_split(arr.flatten(), splits)
-    data_list = [
-        f'{{"instances":{json.dumps([{"data": text} for text in arr])}}}'
-        for arr in arr_list
-    ]
+    data_list = [pq.utils.txt_format(arr) for arr in arr_list]
     return data_list
 
 
