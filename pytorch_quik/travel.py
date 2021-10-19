@@ -83,7 +83,10 @@ class QuikTrek:
         """Constructor, primarily adding learning arguments
         and creating dataclasses."""
         if args is None:
-            parser = arg.add_learn_args(ArgumentParser())
+            parser = arg.add_ddp_args(ArgumentParser())
+            parser = arg.add_learn_args(parser)
+            parser = arg.add_mlflow_args(parser)
+            parser = arg.add_ray_tune_args(parser)
             args = parser.parse_args()
         self.args = args
         self.epochs = args.epochs

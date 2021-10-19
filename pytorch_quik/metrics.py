@@ -60,6 +60,8 @@ def numpize_array(arr: ArrType) -> np.array:
     elif isinstance(arr, torch.Tensor):
         if arr.device.type == "cuda":
             arr = arr.cpu()
+        if arr.requires_grad:
+            arr = arr.detach()
         arr = arr.numpy()
     if len(arr.shape) == 2:
         if arr.shape[1] == 1:
