@@ -12,6 +12,7 @@ codecov
 numpy>=1.21.0
 bump2version
 mlflow
+boto3
 ray[tune]
 torchserve
 torch-model-archiver

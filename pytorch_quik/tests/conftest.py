@@ -19,7 +19,9 @@ SAMPLE = TESTDIR.joinpath("sample_data.json")
 FINAL = TESTDIR.joinpath("final_data.json")
 ENCODING = TESTDIR.joinpath("sample_encoding.pt")
 AMASK = TESTDIR.joinpath("sample_amask.pt")
-
+TRACKING_URI = "http://deepshadow.gsslab.rdu2.redhat.com:5000"
+ENDPOINT_URL = "https://s3.upshift.redhat.com"
+MLUSER = "dcheswor"
 
 # def pytest_generate_tests(metafunc):
 #     metafunc.parametrize("gpus", [0, 1])
@@ -34,11 +36,10 @@ def args(gpu):
     sys.argv = ['']
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     MLKWARGS = {
-        "experiment": "nps-sentiment",
-        "user": "dcheswor",
-        "tracking_uri": "http://ceean-1.gsslab.rdu2.redhat.com:5000",
-        "endpoint_url": "https://s3.upshift.redhat.com",
-    }   
+        "user": MLUSER,
+        "tracking_uri": TRACKING_URI,
+        "endpoint_url": ENDPOINT_URL,
+    }
     parser = arg.add_ddp_args(parser)
     parser = arg.add_learn_args(parser)
     parser = arg.add_mlflow_args(parser, kwargs=MLKWARGS)
