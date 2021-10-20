@@ -8,6 +8,7 @@ pytest
 pytest-cov
 pytest-mpl
 pytest-lazy-fixture
+pytest-dotenv
 codecov
 numpy>=1.21.0
 bump2version

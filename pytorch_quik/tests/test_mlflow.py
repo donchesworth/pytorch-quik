@@ -6,10 +6,15 @@ from mlflow.entities import Run
 import pytest
 import logging
 from botocore.exceptions import NoCredentialsError
+from os import getenv
 
 INFO0 = "please supply either a run_id or filter_string"
 INFO1 = "query returned multiple runs, please update the filter"
+ISCI = getenv("CI", False)
+nomlflow = pytest.mark.skipif(ISCI, reason="no mlflow server access")
 
+
+@nomlflow
 def create_qml(args):
     args.experiment = "pytest"
     mlf = QuikMlflow(args)
@@ -19,6 +24,7 @@ def create_qml(args):
     return mlf
 
 
+@nomlflow
 def test_quik_mlflow(args):
     # testing a new experiment, then an existing one
     mlf = create_qml(args)
@@ -29,6 +35,7 @@ def test_quik_mlflow(args):
         mlf.client.delete_experiment(mlf.expid)
 
 
+@nomlflow
 def test_quik_mlflow_run(args):
     args.experiment = "pytest"
     dlk = DlKwargs()
@@ -37,20 +44,24 @@ def test_quik_mlflow_run(args):
     mlf.end_run()
     mlf.update_run_status("RUNNING")
     mlf.end_run()
+    mlf.client.delete_run(mlf.runid)
     if args.gpu == 0:
         mlf.client.delete_experiment(mlf.expid)
 
 
+@nomlflow
 def test_quik_mlflow_logging(args):
     args.experiment = "pytest"
     mlf = create_qml(args)
     dlk = DlKwargs()
     mlf.create_run([dlk])
     mlf.log_metric("metric1", 1)
+    mlf.client.delete_run(mlf.runid)
     if args.gpu == 0:
         mlf.client.delete_experiment(mlf.expid)
 
 
+@nomlflow
 def test_quik_mlflow_search(args):
     args.experiment = "pytest"
     mlf = create_qml(args)
@@ -61,10 +72,12 @@ def test_quik_mlflow_search(args):
     assert isinstance(out, PagedList)
     assert isinstance(out[0], Run)
     assert out[0].data.metrics["metric1"] == 1.0
+    mlf.client.delete_run(mlf.runid)
     if args.gpu == 0:
         mlf.client.delete_experiment(mlf.expid)
 
 
+@nomlflow
 def test_some_quik_mlflow_state_dict(args, caplog):
     mlf = create_qml(args)
     runs = mlf.search_runs("metrics.metric1 = 1")

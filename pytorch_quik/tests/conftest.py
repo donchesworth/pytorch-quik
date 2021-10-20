@@ -6,8 +6,7 @@ import pandas as pd
 import numpy as np
 import torch
 import json
-from argparse import Namespace
-from os import system
+from os import getenv
 import warnings
 from collections import OrderedDict
 import sys
@@ -19,9 +18,10 @@ SAMPLE = TESTDIR.joinpath("sample_data.json")
 FINAL = TESTDIR.joinpath("final_data.json")
 ENCODING = TESTDIR.joinpath("sample_encoding.pt")
 AMASK = TESTDIR.joinpath("sample_amask.pt")
-TRACKING_URI = "http://deepshadow.gsslab.rdu2.redhat.com:5000"
-ENDPOINT_URL = "https://s3.upshift.redhat.com"
-MLUSER = "dcheswor"
+TRACKING_URI = getenv("TRACKING_URI", "https://localhost:5000")
+ENDPOINT_URL = getenv("ENDPOINT_URL", None)
+MLUSER = getenv("MLUSER", None)
+
 
 # def pytest_generate_tests(metafunc):
 #     metafunc.parametrize("gpus", [0, 1])
