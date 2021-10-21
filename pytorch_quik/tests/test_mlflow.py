@@ -10,8 +10,10 @@ from os import getenv
 
 INFO0 = "please supply either a run_id or filter_string"
 INFO1 = "query returned multiple runs, please update the filter"
-ISCI = getenv("CI", False)
-nomlflow = pytest.mark.skipif(ISCI, reason="no mlflow server access")
+ISCI = getenv("CI", "false")
+nomlflow = pytest.mark.skipif(
+    ISCI == "true", reason="no mlflow server access"
+    )
 
 
 @nomlflow
