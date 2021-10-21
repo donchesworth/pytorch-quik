@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cd /opt/pq
-source .env
+source ./.env
 # pytest
 pytest --mpl --cov=/opt/pq/pytorch_quik --cov-config=.coveragerc --cov-report=xml:coverage_cpu.xml
 # --ignore=pytorch_quik/tests/test_mlflow.py
