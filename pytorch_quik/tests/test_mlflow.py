@@ -17,17 +17,7 @@ nomlflow = pytest.mark.skipif(
 
 
 @nomlflow
-def create_qml(args):
-    args.experiment = "pytest"
-    mlf = QuikMlflow(args)
-    exp = mlf.client.get_experiment(mlf.expid)
-    if exp.lifecycle_stage == 'deleted':
-        mlf.client.restore_experiment(mlf.expid)
-    return mlf
-
-
-@nomlflow
-def test_quik_mlflow(args):
+def test_quik_mlflow(args, create_qml):
     # testing a new experiment, then an existing one
     mlf = create_qml(args)
     assert isinstance(mlf, QuikMlflow)
@@ -38,7 +28,7 @@ def test_quik_mlflow(args):
 
 
 @nomlflow
-def test_quik_mlflow_run(args):
+def test_quik_mlflow_run(args, create_qml, clean_run):
     args.experiment = "pytest"
     dlk = DlKwargs()
     mlf = create_qml(args)
@@ -46,25 +36,22 @@ def test_quik_mlflow_run(args):
     mlf.end_run()
     mlf.update_run_status("RUNNING")
     mlf.end_run()
-    mlf.client.delete_run(mlf.runid)
-    if args.gpu == 0:
-        mlf.client.delete_experiment(mlf.expid)
+    assert isinstance(mlf.run, Run)
+    clean_run(mlf, args.gpu)
 
 
 @nomlflow
-def test_quik_mlflow_logging(args):
+def test_quik_mlflow_logging(args, create_qml, clean_run):
     args.experiment = "pytest"
     mlf = create_qml(args)
     dlk = DlKwargs()
     mlf.create_run([dlk])
     mlf.log_metric("metric1", 1)
-    mlf.client.delete_run(mlf.runid)
-    if args.gpu == 0:
-        mlf.client.delete_experiment(mlf.expid)
+    clean_run(mlf, args.gpu)
 
 
 @nomlflow
-def test_quik_mlflow_search(args):
+def test_quik_mlflow_search(args, create_qml, clean_run):
     args.experiment = "pytest"
     mlf = create_qml(args)
     dlk = DlKwargs()
@@ -74,13 +61,11 @@ def test_quik_mlflow_search(args):
     assert isinstance(out, PagedList)
     assert isinstance(out[0], Run)
     assert out[0].data.metrics["metric1"] == 1.0
-    mlf.client.delete_run(mlf.runid)
-    if args.gpu == 0:
-        mlf.client.delete_experiment(mlf.expid)
+    clean_run(mlf, args.gpu)
 
 
 @nomlflow
-def test_some_quik_mlflow_state_dict(args, caplog):
+def test_some_quik_mlflow_state_dict(args, create_qml, caplog):
     mlf = create_qml(args)
     runs = mlf.search_runs("metrics.metric1 = 1")
     run_id = runs[0].info.run_id

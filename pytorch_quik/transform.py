@@ -13,6 +13,7 @@ logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 def create_dicts(
     categories: np.array, labels: np.array
 ) -> Tuple[Dict[int, int], Dict[int, int]]:

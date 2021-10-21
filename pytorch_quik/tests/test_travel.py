@@ -2,9 +2,6 @@ from pytorch_quik.travel import (
     QuikTrek,
     QuikTraveler,
     QuikAmp,
-    DlKwargs,
-    OptKwargs,
-    World,
 )
 from pytorch_quik.ddp import cleanup
 from pytorch_quik.bert import get_pretrained_model, BERT_MODELS
@@ -18,34 +15,7 @@ from transformers import (
     logging as tlog,
 )
 import torch
-import sys
 import pytest
-
-
-def test_quik_trek(args):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_trek portion")
-        pytest.skip()
-    qt = QuikTrek(args.gpu, args)
-    assert isinstance(qt, QuikTrek)
-    assert isinstance(qt.epochs, int)
-    assert isinstance(qt.dlkwargs, DlKwargs)
-    assert isinstance(qt.optkwargs, OptKwargs)
-    assert isinstance(qt.world, World)
-    if args.gpu is not None:
-        cleanup()
-
-
-def test_quik_trek_noargs(gpu):
-    sys.argv = ['']
-    qt = QuikTrek(gpu)
-    assert isinstance(qt, QuikTrek)
-    assert isinstance(qt.epochs, int)
-    assert isinstance(qt.dlkwargs, DlKwargs)
-    assert isinstance(qt.optkwargs, OptKwargs)
-    assert isinstance(qt.world, World)
-    if gpu is not None:
-        cleanup()
 
 
 def test_quik_traveler(args):
@@ -65,7 +35,7 @@ def test_quik_data(sample_tds, args):
         print("unable to test quik_data portion")
         pytest.skip()
     qt = QuikTrek(args.gpu, args)
-    qtr = QuikTraveler(qt, "pytest")
+    qtr = QuikTraveler(qt, "train")
     qtr.add_data(sample_tds)
     assert(isinstance(qtr.data.dataset, td.TensorDataset))
     assert(isinstance(qtr.data.data_loader, data.DataLoader))
@@ -96,10 +66,13 @@ def test_quik_model_ml(args, sample_labels):
         cleanup()
 
 
-def test_quik_loss(args, batch):
+def test_quik_loss(args, batch, create_qml, test_mlflow):
     if bool(args.gpus) and dq.utils.gpus() == 0:
         print("unable to test quik_model_ml portion")
         pytest.skip()
+    if test_mlflow:
+        args.use_mlflow = test_mlflow
+        _ = create_qml(args)
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "pytest")
     tlog.set_verbosity_error()
@@ -159,5 +132,5 @@ def test_quik_state_dict(args, sample_labels):
     )
     qtr.add_model(model)
     qtr.save_state_dict("orig")
-
-
+    if args.gpu is not None:
+        cleanup()

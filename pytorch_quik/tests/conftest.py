@@ -1,6 +1,7 @@
 from pathlib import Path
 import pytest
 from pytorch_quik import arg
+from pytorch_quik.mlflow import QuikMlflow
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import pandas as pd
 import numpy as np
@@ -28,6 +29,32 @@ MLUSER = getenv("MLUSER", None)
 @pytest.fixture(params=[None, 0])
 def gpu(request):
     return request.param
+
+
+@pytest.fixture(params=[True, False])
+def test_mlflow(request):
+    return request.param
+
+
+@pytest.fixture
+def clean_run():
+    def clean_run_function(mlf, gpu):
+        mlf.client.delete_run(mlf.runid)
+        if gpu == 0:
+            mlf.client.delete_experiment(mlf.expid)
+    return clean_run_function
+
+
+@pytest.fixture
+def create_qml():
+    def create_qml_function(args):
+        args.experiment = "pytest"
+        mlf = QuikMlflow(args)
+        exp = mlf.client.get_experiment(mlf.expid)
+        if exp.lifecycle_stage == 'deleted':
+            mlf.client.restore_experiment(mlf.expid)
+        return mlf
+    return create_qml_function
 
 
 @pytest.fixture
@@ -132,6 +159,13 @@ def sample_labels():
     labels = np.argmax(labels, axis=1).flatten()
     # torch.manual_seed(0)
     # return (torch.rand(200) < 0.5).int()
+    return labels
+
+
+@pytest.fixture(scope="session")
+def eight_labels():
+    """labels list for 9 categories"""
+    labels = [0, 0, 0, 0, 1, 1, 1, 1]
     return labels
 
 
