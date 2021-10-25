@@ -5,7 +5,6 @@ from pytorch_quik.travel import (
 )
 from pytorch_quik.ddp import cleanup
 from pytorch_quik.bert import get_pretrained_model, BERT_MODELS
-import dask_quik as dq
 from torch.utils import data
 import torch.utils.data as td
 from torch import nn
@@ -18,10 +17,8 @@ import torch
 import pytest
 
 
+@pytest.mark.skip_gpus
 def test_quik_traveler(args):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_traveler portion")
-        pytest.skip()
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "pytest")
     assert isinstance(qtr, QuikTraveler)
@@ -30,10 +27,8 @@ def test_quik_traveler(args):
         cleanup()
 
 
+@pytest.mark.skip_gpus
 def test_quik_data(sample_tds, args):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_data portion")
-        pytest.skip()
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "train")
     qtr.add_data(sample_tds)
@@ -43,10 +38,8 @@ def test_quik_data(sample_tds, args):
         cleanup()
 
 
+@pytest.mark.skip_gpus
 def test_quik_model_ml(args, sample_labels):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_model_ml portion")
-        pytest.skip()
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "pytest")
     tlog.set_verbosity_error()
@@ -66,10 +59,9 @@ def test_quik_model_ml(args, sample_labels):
         cleanup()
 
 
+@pytest.mark.skip_mlflow_partial
+@pytest.mark.skip_gpus
 def test_quik_loss(args, batch, create_qml, test_mlflow):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_model_ml portion")
-        pytest.skip()
     if test_mlflow:
         args.use_mlflow = test_mlflow
         _ = create_qml(args)
@@ -95,10 +87,8 @@ def test_quik_loss(args, batch, create_qml, test_mlflow):
         cleanup()
 
 
+@pytest.mark.skip_gpus
 def test_record_results(args, sample_tds, batch, two_classes):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_model_ml portion")
-        pytest.skip()
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "pytest")
     tlog.set_verbosity_error()
@@ -120,10 +110,8 @@ def test_record_results(args, sample_tds, batch, two_classes):
         cleanup()
 
 
+@pytest.mark.skip_gpus
 def test_quik_state_dict(args, sample_labels):
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test quik_model_ml portion")
-        pytest.skip()
     qt = QuikTrek(args.gpu, args)
     qtr = QuikTraveler(qt, "pytest")
     model = get_pretrained_model(

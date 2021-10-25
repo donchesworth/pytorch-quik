@@ -1,6 +1,4 @@
 import pytorch_quik as pq
-import dask_quik as dq
-from collections import OrderedDict
 import torch
 import numpy as np
 import pandas as pd
@@ -13,6 +11,7 @@ def test_choose_a_class():
     assert cc.shape == torch.Size([100])
 
 
+@pytest.mark.skip_gpus
 def test_numpize_array(args):
     ln = 100
     wd = 3
@@ -20,10 +19,7 @@ def test_numpize_array(args):
     p = pd.DataFrame(np.random.randint(0, ln, size=(ln, wd)))
     s = pd.Series(np.random.randint(0, ln, size=ln))
     objs = [t, p, s]
-    if bool(args.gpus) and dq.utils.gpus() == 0:
-        print("unable to test dask_cudf portion")
-        pytest.skip()
-    elif args.gpus == 1:
+    if args.gpus == 0:
         import cudf
         c = cudf.DataFrame.from_pandas(p)
         objs.append(c)

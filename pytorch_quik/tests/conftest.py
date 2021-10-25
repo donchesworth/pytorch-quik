@@ -11,6 +11,7 @@ from os import getenv
 import warnings
 from collections import OrderedDict
 import sys
+import pytest
 
 # bd = Path("/workspaces/rdp-vscode-devcontainer/pytorch-quik")
 # TESTDIR = bd.joinpath("pytorch_quik", "tests")
@@ -22,10 +23,29 @@ AMASK = TESTDIR.joinpath("sample_amask.pt")
 TRACKING_URI = getenv("TRACKING_URI", "https://localhost:5000")
 ENDPOINT_URL = getenv("ENDPOINT_URL", None)
 MLUSER = getenv("MLUSER", None)
+IS_CI = getenv("CI", "false")
 
 
-# def pytest_generate_tests(metafunc):
-#     metafunc.parametrize("gpus", [0, 1])
+def pytest_collection_modifyitems(items):
+    skip_mlflow = pytest.mark.skipif(
+        IS_CI == "true", reason="no mlflow server access"
+    )
+    skip_mlflow_partial = pytest.mark.skipif(
+        IS_CI == "true" and test_mlflow,
+        reason="no mlflow server access"
+    )
+    skip_gpus = pytest.mark.skipif(
+        IS_CI == "true" and gpu == 0, reason="no GPU for test version"
+    )
+    for item in items:
+        if "skip_mlflow" in item.keywords:
+            item.add_marker(skip_mlflow)
+        if "skip_mlflow_partial" in item.keywords:
+            item.add_marker(skip_mlflow_partial)
+        if "skip_gpus" in item.keywords:
+            item.add_marker(skip_gpus)
+
+
 @pytest.fixture(params=[None, 0])
 def gpu(request):
     return request.param

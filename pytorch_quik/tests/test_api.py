@@ -1,6 +1,5 @@
 import pytorch_quik as pq
 import numpy as np
-import dask_quik as dq
 import pytest
 
 BATCH_SIZE = 3
@@ -16,10 +15,8 @@ def test_split_and_format(sample_data):
     assert (txt_list[0][:63] == output)
 
 
+@pytest.mark.skip_mlflow
 def test_batch_inference(sample_data, senti_classes):
-    if dq.utils.gpus() == 0:
-        print("unable to test batch_inference on internal API")
-        pytest.skip()
     output = np.array([
         'Positive', 'Positive', 'Positive', 'Positive', 'Neutral',
         'Negative', 'Positive', 'Positive'], dtype=object)
