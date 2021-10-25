@@ -43,7 +43,7 @@ def pytest_collection_modifyitems(items):
         if "skip_mlflow_partial" in item.keywords and "[True-" in item.name:
             item.add_marker(skipif_mlflow_partial)
         # -0] is when gpu = 0
-        if "skip_gpus" in item.keywords and "-0]" in item.name:
+        if "skip_gpus" in item.keywords and "0]" in item.name:
             item.add_marker(skipif_gpus)
 
 
