@@ -25,17 +25,17 @@ def test_quik_trek(args):
         cleanup()
 
 
-# @pytest.mark.skip_gpus
-# def test_quik_trek_noargs(gpu):
-#     sys.argv = ['']
-#     qt = QuikTrek(gpu)
-#     assert isinstance(qt, QuikTrek)
-#     assert isinstance(qt.epochs, int)
-#     assert isinstance(qt.dlkwargs, DlKwargs)
-#     assert isinstance(qt.optkwargs, OptKwargs)
-#     assert isinstance(qt.world, World)
-#     if gpu is not None:
-#         cleanup()
+@pytest.mark.skip_gpus
+def test_quik_trek_noargs(gpu):
+    sys.argv = ['']
+    qt = QuikTrek(gpu)
+    assert isinstance(qt, QuikTrek)
+    assert isinstance(qt.epochs, int)
+    assert isinstance(qt.dlkwargs, DlKwargs)
+    assert isinstance(qt.optkwargs, OptKwargs)
+    assert isinstance(qt.world, World)
+    if gpu is not None:
+        cleanup()
 
 
 @pytest.mark.skip_mlflow

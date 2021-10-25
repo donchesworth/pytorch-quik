@@ -23,27 +23,28 @@ AMASK = TESTDIR.joinpath("sample_amask.pt")
 TRACKING_URI = getenv("TRACKING_URI", "https://localhost:5000")
 ENDPOINT_URL = getenv("ENDPOINT_URL", None)
 MLUSER = getenv("MLUSER", None)
-IS_CI = getenv("CI", "false")
+IS_CI = getenv("CI", "true")
 
 
 def pytest_collection_modifyitems(items):
-    skip_mlflow = pytest.mark.skipif(
+    skipif_mlflow = pytest.mark.skipif(
         IS_CI == "true", reason="no mlflow server access"
     )
-    skip_mlflow_partial = pytest.mark.skipif(
-        IS_CI == "true" and test_mlflow,
-        reason="no mlflow server access"
+    skipif_mlflow_partial = pytest.mark.skipif(
+        IS_CI == "true", reason="no mlflow server access"
     )
-    skip_gpus = pytest.mark.skipif(
-        IS_CI == "true" and gpu == 0, reason="no GPU for test version"
+    skipif_gpus = pytest.mark.skipif(
+        IS_CI == "true", reason="no GPU for test version"
     )
     for item in items:
         if "skip_mlflow" in item.keywords:
-            item.add_marker(skip_mlflow)
-        if "skip_mlflow_partial" in item.keywords:
-            item.add_marker(skip_mlflow_partial)
-        if "skip_gpus" in item.keywords:
-            item.add_marker(skip_gpus)
+            item.add_marker(skipif_mlflow)
+        # [True- is when test_mlflow = True
+        if "skip_mlflow_partial" in item.keywords and "[True-" in item.name:
+            item.add_marker(skipif_mlflow_partial)
+        # -0] is when gpu = 0
+        if "skip_gpus" in item.keywords and "-0]" in item.name:
+            item.add_marker(skipif_gpus)
 
 
 @pytest.fixture(params=[None, 0])
