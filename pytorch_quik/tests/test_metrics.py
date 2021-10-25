@@ -19,7 +19,7 @@ def test_numpize_array(args):
     p = pd.DataFrame(np.random.randint(0, ln, size=(ln, wd)))
     s = pd.Series(np.random.randint(0, ln, size=ln))
     objs = [t, p, s]
-    if args.has_gpus:
+    if args.has_gpu:
         import cudf
         c = cudf.DataFrame.from_pandas(p)
         objs.append(c)
