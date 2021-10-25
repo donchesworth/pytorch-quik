@@ -12,17 +12,17 @@ import sys
 import pytest
 
 
-@pytest.mark.skip_gpus
-def test_quik_trek(args):
-    sys.argv = ['']
-    qt = QuikTrek(args.gpu, args)
-    assert isinstance(qt, QuikTrek)
-    assert isinstance(qt.epochs, int)
-    assert isinstance(qt.dlkwargs, DlKwargs)
-    assert isinstance(qt.optkwargs, OptKwargs)
-    assert isinstance(qt.world, World)
-    if args.gpu is not None:
-        cleanup()
+# @pytest.mark.skip_gpus
+# def test_quik_trek(args):
+#     sys.argv = ['']
+#     qt = QuikTrek(args.gpu, args)
+#     assert isinstance(qt, QuikTrek)
+#     assert isinstance(qt.epochs, int)
+#     assert isinstance(qt.dlkwargs, DlKwargs)
+#     assert isinstance(qt.optkwargs, OptKwargs)
+#     assert isinstance(qt.world, World)
+#     if args.gpu is not None:
+#         cleanup()
 
 
 @pytest.mark.skip_gpus
