@@ -23,7 +23,7 @@ AMASK = TESTDIR.joinpath("sample_amask.pt")
 TRACKING_URI = getenv("TRACKING_URI", "https://localhost:5000")
 ENDPOINT_URL = getenv("ENDPOINT_URL", None)
 MLUSER = getenv("MLUSER", None)
-IS_CI = getenv("CI", "true")
+IS_CI = getenv("CI", "false")
 
 
 def pytest_collection_modifyitems(items):
