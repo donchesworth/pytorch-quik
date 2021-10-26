@@ -13,7 +13,7 @@ __all__ = [
     "utils",
 ]
 _optional = ["bert", "mlflow", "tune"]
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 for submodule in __all__:
     import_module(f"pytorch_quik.{submodule}")
