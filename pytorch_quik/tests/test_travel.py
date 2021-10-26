@@ -59,32 +59,32 @@ def test_quik_model_ml(args, sample_labels):
         cleanup()
 
 
-# @pytest.mark.skip_mlflow_partial
-# @pytest.mark.skip_gpus
-# def test_quik_loss(args, batch, create_qml, test_mlflow):
-#     if test_mlflow:
-#         args.use_mlflow = test_mlflow
-#         _ = create_qml(args)
-#     qt = QuikTrek(args.gpu, args)
-#     qtr = QuikTraveler(qt, "pytest")
-#     tlog.set_verbosity_error()
-#     model = get_pretrained_model(
-#         labels=batch[2],
-#         bert_type=args.bert_type
-#     )
-#     qtr.add_model(model)
-#     qtr.set_criterion(nn.CrossEntropyLoss)
-#     qtr.set_optimizer(AdamW)
-#     args.sched_kwargs["num_training_steps"] = 100
-#     qtr.set_scheduler(get_linear_schedule_with_warmup, args.sched_kwargs)
-#     batch = [tens.to(qtr.world.device) for tens in batch]
-#     outputs = qtr.model.forward(input_ids=batch[0], attention_mask=batch[1])
-#     loss = qtr.criterion(outputs[0], batch[2])
-#     qtr.backward(loss, clip=True)
-#     qtr.scheduler.step()
-#     qtr.add_loss(loss, None, 0)
-#     if args.gpu is not None:
-#         cleanup()
+@pytest.mark.skip_mlflow_partial
+@pytest.mark.skip_gpus
+def test_quik_loss(args, batch, create_qml, test_mlflow):
+    if test_mlflow:
+        args.use_mlflow = test_mlflow
+        _ = create_qml(args)
+    qt = QuikTrek(args.gpu, args)
+    qtr = QuikTraveler(qt, "pytest")
+    tlog.set_verbosity_error()
+    model = get_pretrained_model(
+        labels=batch[2],
+        bert_type=args.bert_type
+    )
+    qtr.add_model(model)
+    qtr.set_criterion(nn.CrossEntropyLoss)
+    qtr.set_optimizer(AdamW)
+    args.sched_kwargs["num_training_steps"] = 100
+    qtr.set_scheduler(get_linear_schedule_with_warmup, args.sched_kwargs)
+    batch = [tens.to(qtr.world.device) for tens in batch]
+    outputs = qtr.model.forward(input_ids=batch[0], attention_mask=batch[1])
+    loss = qtr.criterion(outputs[0], batch[2])
+    qtr.backward(loss, clip=True)
+    qtr.scheduler.step()
+    qtr.add_loss(loss, None, 0)
+    if args.gpu is not None:
+        cleanup()
 
 
 @pytest.mark.skip_gpus
