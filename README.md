@@ -31,9 +31,9 @@ As I was building out the same set of code for a recommender system, a BERT sent
 pip install pytorch-quik
 ```
 
-## Usage
+# Usage
 
-### Intro
+## Intro, QuikTrek, QuikTraveler
 
 In its simplest form, you'll want to:
 
@@ -69,7 +69,7 @@ for epoch in range(tr.epochs):
     pq.io.save_state_dict(tr.model, tr.args, epoch)
 ````
 
-### QuikData
+## QuikData
 
 A little more about how the data pull works. I usually run my project from my repo, and from the command line. Either way, `QuikData` expects your tensors, models, and state_dicts to be in your current path, and in a `data` subfolder. It will also expect to use your traveler's arguments to determine the date for the filename. You can set it using argparse like I do, or throw it in to your script like this:
 ``` python
@@ -86,6 +86,8 @@ The file will also have the words tensor, model, or state_dict in it, train/vali
 - data/state_dict_e0_20210101.pt
 - data/state_dict_e1_20210101.pt
 
+## Model and Functions
+
 ### Model State
 
 Sometimes your training and validation losses will converge sooner than expected, and you'll want to test an epoch before the final one. this is possible, because the `pq.io.save_state_dict` function will save the weights and biases at the end of the epoch to disk.
@@ -94,6 +96,8 @@ Sometimes your training and validation losses will converge sooner than expected
 Setting the criterion, optimizer, and scheduler just takes a callback, and can use both general defaults and specific ones. For instance, I have an OptKwargs class that can receive parameters via argparse that most optimizers have (lr, weight_decay, eps, and betas), but then you can also feed in specific parameters like `amsgrad=False` if you are using Adam at instantiation like this: `tr.set_optimizer(Adam, amsgrad=False)`. For simplicity I didn't use a scheduler above, but you could include something like `tr.set_scheduler(OneCycleLR)`, and then after your backward, include a `tr.scheduler.step()`.
 
 ## Distributed Data Parallel (DDP)
+
+### Intro to DDP
 
 This is really why pytorch-quik is quick-er for me. Adding in DDP can be tough, and I tried to do so and allow you to switch back and forth when necessary. I run my code on an OpenShift cluster, and sometimes can't get on my multi-GPU setup. This allows me to just use a different set of args and just deal with slower code, not broken code!
 
@@ -126,7 +130,7 @@ def forward(self, users, items, caster):
 
 ### Logging
 
-This isn't true logging, but a good place to talk about the progress bar and metrics. If your training/validation is distributed, your loss will eventually be aggregated with ring-all reduce on each GPU, so it doesn't matter on which one you calculate loss. So, I make your GPU 0 your "logger" GPU, and it will be the one with `tr.world.is_logger = True`. When you see this used, it's just telling the progress bar to be drawn, or the metrics to be calculated.
+This isn't true logging (though there is some), but this is a good place to talk about the progress bar and metrics. If your training/validation is distributed, your loss will eventually be aggregated with ring-all reduce on each GPU, so it doesn't matter on which one you calculate loss. So, I make your GPU 0 your "logger" GPU, and it will be the one with `tr.world.is_logger = True`. When you see this used, it's just telling the progress bar to be drawn, or the metrics to be calculated.
 
 #### tqdm Progress Bar
 
@@ -155,11 +159,11 @@ print(tr.metrics.results)
 1      1        0.5281         0.0  06:20
 ```
 
-### Attributes
+## Attributes
 
 Pytorch-quik class instance attributes come in as arguments, and are (mostly) stored in dataclasses.
 
-#### Arguments
+### Arguments
 
 There are tons of arguments to set when you're training your model. These are split into various types:
 
@@ -186,7 +190,7 @@ parser = pq.arg.add_ray_tune_args(parser)
 args = parser.parse_args()
 ```
 
-#### Dataclasses
+### Dataclasses
 
 Similar to arguments, I've organized the attributes within a `QuikTrek` as three dataclasses and `QuikMlflow` as one dataclass containing keyword arguments (kwargs):
 - `DlKwargs`: Data Loader kwargs such as batch size, pin memory, and number of workers
@@ -260,6 +264,8 @@ if __name__ == "__main__":
 
 ````
 
+## Additional Usage Information
+
 ### Spawning across GPUs... or not!
 
 This is why I love pytorch-quik.  then you can use my `traverse` function that will make sure your GPUs are available to PyTorch, and if so, send your training across each GPU! If it decides you can't, it send use that same exact code to the CPU run it on there. This is what they would all look like (I'll abbreviate train):
@@ -291,6 +297,8 @@ Cool, huh.
 
 Let me know if you have any questions, and I'll keep adding to this documentation!
 
+# Integrations
+
 ## MLflow integration
 
 #### Instantiation
@@ -299,7 +307,7 @@ MLflow for model tracking has been integrated with `QuikTrek`. When instantiated
 - checking if `args.experiment` exists, and if not, creates it
 - creates a run under the experiment
 - adds appropriate run tags
-- adds data loader, optimizer, and world [dataclasses](#Dataclasses) as run parameters
+- adds data loader, optimizer, and world [dataclasses](#dataclasses) as run parameters
 
 #### Tracking
 
@@ -352,7 +360,7 @@ I should note the benefit of using my customized handler, is that it will provid
 
 ### TS Usage
 
-In order to create your torch model archive (mar) file, there are only a few steps. When I do so, I pull my [state dict from MLflow](#Saving-artifacts-and accuracy-metrics), which makes it even more modular. If you create a function called `parse_my_args()` including all the `pq.args` in the [Arguments snippet](#Arguments), and `INDEX_LABELS` is an `OrderedDict` of your labels, here's an example where you (1) pull the state dict, (2) download the model, (3) save the model and files to disk, and (4) create the mar:
+In order to create your torch model archive (mar) file, there are only a few steps. When I do so, I pull my [state dict from MLflow](#saving-artifacts-and-accuracy-metrics), which makes it even more modular. If you create a function called `parse_my_args()` including all the `pq.args` in the [Arguments snippet](#arguments), and `INDEX_LABELS` is an `OrderedDict` of your labels, here's an example where you (1) pull the state dict, (2) download the model, (3) save the model and files to disk, and (4) create the mar:
 
 ``` python
         args = parse_my_args() # this would be all pq.arg functions you'd need
@@ -366,7 +374,7 @@ In order to create your torch model archive (mar) file, there are only a few ste
         pq.serve.create_mar(args, serve_path)
 ```
 
-## API Usage
+### Torch Serve API Usage
 
 Now that you have a torch serve mar (let's call it `my_model.mar`, and have started it (hopefully in a container!) by running `torchserve --start --models "my_tc=my_model.mar" --ncs`, then you can use pytorch-quik's `batch_inference` function. The benefits of this function are:
 - it takes an array of records, vs. sending one input at a time to the API!
