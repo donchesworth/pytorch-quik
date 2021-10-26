@@ -10,7 +10,6 @@ import socket
 from contextlib import closing
 from pathlib import Path
 from typing import Optional
-import warnings
 
 
 def find_free_port() -> int:
@@ -130,7 +129,7 @@ def consume_prefix_in_state_dict_if_present(
     keys = sorted(state_dict.keys())
     for key in keys:
         if key.startswith(prefix):
-            newkey = key[len(prefix) :]
+            newkey = key[len(prefix):]
             state_dict[newkey] = state_dict.pop(key)
 
     # also strip the prefix in metadata if any.
@@ -144,6 +143,6 @@ def consume_prefix_in_state_dict_if_present(
 
             if len(key) == 0:
                 continue
-            newkey = key[len(prefix) :]
+            newkey = key[len(prefix):]
             metadata[newkey] = metadata.pop(key)
         state_dict._metadata = metadata

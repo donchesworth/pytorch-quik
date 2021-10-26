@@ -1,7 +1,6 @@
-import json
 from pathlib import Path
 from pytorch_quik import bert, io, utils
-from typing import Optional, List, OrderedDict, KeysView
+from typing import Optional, OrderedDict, KeysView
 from argparse import Namespace
 import shlex
 import subprocess

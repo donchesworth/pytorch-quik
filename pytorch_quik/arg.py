@@ -178,7 +178,7 @@ def add_ray_tune_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
         "--num_samples",
         default=kwargs.get("num_samples", 20),
         type=int,
-        help="The number of ray tune hyperparameter permutations to be trained",
+        help="The number of ray tune hyperparameter permutations to train",
     )
     return parser
 

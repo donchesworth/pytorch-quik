@@ -5,7 +5,6 @@ from pytorch_quik.bert import (
     get_tokenizer,
     get_bert_info,
     save_tokenizer,
-    save_bert_model,
 )
 from pathlib import Path
 from transformers import BatchEncoding, logging as tlog

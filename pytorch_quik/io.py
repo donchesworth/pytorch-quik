@@ -1,7 +1,6 @@
 import torch
 from argparse import Namespace
 from typing import Optional, Union, Tuple
-from torch import nn
 from pathlib import Path
 from datetime import date
 import json
