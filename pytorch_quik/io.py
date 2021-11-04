@@ -59,7 +59,8 @@ def id_str(
         id_str,
     ]
     path_list = filter(None, path_list)
-    filename = Path.cwd().joinpath(*path_list).with_suffix(suffix)
+    filename = Path(getattr(args, "base_dir", Path.cwd()))
+    filename = filename.joinpath(*path_list).with_suffix(suffix)
     filename.parent.mkdir(parents=True, exist_ok=True)
     return filename
 
