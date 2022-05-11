@@ -12,7 +12,7 @@ __all__ = [
     "travel",
     "utils",
 ]
-_optional = ["bert", "mlflow", "tune"]
+_optional = ["hugging", "mlflow", "tune"]
 __version__ = "0.3.1"
 
 for submodule in __all__:
