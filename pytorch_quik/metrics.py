@@ -18,7 +18,7 @@ import sys
 try:
     import cudf
 except ImportError:
-    import dask_quik.dummy as cudf
+    import pytorch_quik.dummy as cudf
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-import dask_quik as dq
+from pytorch_quik.utils import gpus
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -61,7 +61,7 @@ def traverse(train_fn: Callable, args: Namespace):
         Neural Network
         args (Namespace): The argparse Namespace for this script
     """
-    if bool(dq.utils.gpus()):
+    if bool(gpus()):
         ddp_traverse(train_fn, args)
     else:
         train_fn(gpu=None, args=args)

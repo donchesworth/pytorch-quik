@@ -1,6 +1,13 @@
 import time
 from typing import Union, Dict, Tuple, OrderedDict, List
 import json
+from subprocess import check_output, STDOUT
+import sys
+import logging
+
+logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def sec_str(st: float) -> str:
@@ -67,3 +74,17 @@ def txt_format(txt_arr: List[str]) -> str:
     txt = f'{{"instances":' \
         f'{json.dumps([{"data": text} for text in txt_arr])}}}'
     return txt
+
+
+def gpus() -> int:
+    """Determines if there are GPUs on the system, and
+    how many
+
+    Returns:
+        int: number of GPUs on the system
+    """
+    gpu_cmd = "nvidia-smi -L | wc -l"
+    gpus = check_output(gpu_cmd, stderr=STDOUT, shell=True)
+    gpus = int(gpus.splitlines()[-1])
+    logger.info(f"{gpus} gpus found by polling nvidia-smi")
+    return None if gpus == 0 else gpus

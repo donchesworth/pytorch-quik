@@ -2,8 +2,8 @@ torch>=1.7.0
 torchvision
 pandas>=1.1
 transformers
+sentencepiece
 imbalanced-learn
-dask-quik
 pytest
 pytest-cov
 pytest-mpl

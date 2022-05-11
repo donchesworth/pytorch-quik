@@ -5,6 +5,7 @@ __all__ = [
     "arg",
     "io",
     "ddp",
+    "dummy",
     "metrics",
     "serve",
     "tensor",

@@ -1,5 +1,5 @@
 from argparse import ArgumentParser, Namespace
-import dask_quik as dq
+from pytorch_quik.utils import gpus
 from os import popen
 from typing import Dict, Any
 
@@ -65,7 +65,7 @@ def add_ddp_args(parser: ArgumentParser, kwargs={}) -> ArgumentParser:
     parser.add_argument(
         "-g",
         "--gpus",
-        default=dq.utils.gpus(),
+        default=gpus(),
         type=int,
         help="number of gpus per node",
     )
