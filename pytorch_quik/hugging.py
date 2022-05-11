@@ -3,14 +3,16 @@ from torch import Tensor
 from transformers import (
     BertTokenizer,
     RobertaTokenizer,
+    MarianTokenizer,
     BertForSequenceClassification,
     RobertaForSequenceClassification,
+    MarianMTModel,
     BatchEncoding,
     PreTrainedTokenizer,
     PreTrainedModel,
     logging as tlog,
 )
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, OrderedDict
 import shutil
 from pathlib import Path
 import json
@@ -19,6 +21,7 @@ from argparse import Namespace
 from torch.nn.parallel import DistributedDataParallel as DDP
 import sys
 import logging
+from functools import partial
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__name__)
@@ -27,17 +30,27 @@ logger.setLevel(logging.INFO)
 Tokenizers = Union[BertTokenizer, RobertaTokenizer]
 Models = Union[BertForSequenceClassification, RobertaForSequenceClassification]
 
-BERT_MODELS = {
+# ESEN = {"src": "es", "tgt": "en"}
+HUGGING_MODELS = {
     "bert": {
-        "model-type": "bert-base-uncased",
+        "model-name": "bert-base-uncased",
         "tokenizer": BertTokenizer,
-        "model": BertForSequenceClassification,
+        "model-head": BertForSequenceClassification,
+        "mode": "sequence_classification",
     },
     "roberta": {
-        "model-type": "roberta-base",
+        "model-name": "roberta-base",
         "tokenizer": RobertaTokenizer,
-        "model": RobertaForSequenceClassification,
+        "model-head": RobertaForSequenceClassification,
+        "mode": "sequence_classification",
+
     },
+    "marianmt": {
+        "model-name": partial("Helsinki-NLP/opus-mt-{source}-{target}".format),
+        "tokenizer": MarianTokenizer,
+        "model-head": MarianMTModel,
+        "mode": "sequence_to_sequence",
+    }
 }
 
 BATCH_ENCODE_KWARGS = {
@@ -50,55 +63,71 @@ BATCH_ENCODE_KWARGS = {
 }
 
 
-def get_bert_info(
-    labels: Tensor, bert_type: Optional[str] = "bert"
+def model_info(
+    model_type: Optional[str] = "bert",
+    labels: Optional[Tensor] = None,
+    kwargs: Optional[dict] = None,
 ) -> Dict[str, Union[str, bool]]:
 
-    """Get a BERT or RoBERTa tokenizer from transformers to create
-    encodings.
+    """Create a serving config dictionary for model serving.
+
     Args:
-        labels (Tensor): A tensor of the labels in the dataset. This will
-        affect the size of the network final layer
-        bert_type (str, optional): The type of the model to be used ("bert" or
-        "roberta"). Defaults to "bert".
+        model_type (str, optional): The type of the model to be used ("bert",
+        "roberta", or "marianmt"). Defaults to "bert".
+        labels (Tensor, optional): A tensor of the labels in the dataset. This
+        will affect the size of the network final layer
+        kwargs (dict, optional): If the model-name is a partial (e.g. MarianMT)
+        this will provide the missing text. Default is español to english.
 
     Returns:
         Dict [str, Any]: A dict that could be provided for torch serve
     """
-    bert_dict = BERT_MODELS[bert_type]
-    num_lbls = len(np.unique(labels))
+    model_dict = HUGGING_MODELS[model_type]
+    model_name = model_dict["model-name"]
+    if isinstance(model_name, partial):
+        model_name = model_name(**kwargs)
     serve_config = {
-        "model_name": bert_dict["model-type"],
-        "mode": "sequence_classification",
+        "model_name": model_name,
+        "mode": model_dict["mode"],
         "do_lower_case": True,
-        "num_labels": str(num_lbls),
         "save_mode": "pretrained",
         "max_length": BATCH_ENCODE_KWARGS["max_length"],
         "captum_explanation": False,
-        "embedding_name": bert_type,
+        "embedding_name": model_type,
     }
+    if labels:
+        serve_config["num_labels"] = str(len(np.unique(labels)))
     return serve_config
 
 
 def get_tokenizer(
-    bert_type: Optional[str] = "bert", cache_dir: Optional[str] = None
+    model_type: Optional[str] = "bert",
+    cache_dir: Optional[str] = None,
+    kwargs: Optional[dict] = {},
 ) -> Tokenizers:
-    """Get a BERT or RoBERTa tokenizer from transformers to create
+    """Get a BERT, RoBERTa, or MarianMT tokenizer from transformers to create
     encodings.
 
     Args:
-        bert_type (str, optional): The type of tokenizer ("bert" or "roberta").
-        Defaults to "bert".
+        model_type (str, optional): The type of tokenizer ("bert", "roberta",
+        "marianmt"). Defaults to "bert".
+        cache_dir (str, optional): The directory to cache the tokenizer. This
+        helps save_tokenizer find it.
+        kwargs (dict, optional): If a MarianMT mode, the source and target
+        languages
 
     Returns:
         Tokenizers: The tokenizer to be used by get_encodings.
     """
-    bert_dict = BERT_MODELS[bert_type]
-    for i in range(0, 3):
+    model_dict = HUGGING_MODELS[model_type]
+    model_name = model_dict["model-name"]
+    if isinstance(model_name, partial):
+        model_name = model_name(**kwargs)
+    for _ in range(5):
         while True:
             try:
-                tokenizer = bert_dict["tokenizer"].from_pretrained(
-                    pretrained_model_name_or_path=bert_dict["model-type"],
+                tokenizer = model_dict["tokenizer"].from_pretrained(
+                    pretrained_model_name_or_path=model_name,
                     do_lower_case=True,
                     cache_dir=cache_dir,
                 )
@@ -109,16 +138,7 @@ def get_tokenizer(
     return tokenizer
 
 
-def save_tokenizer(tokenizer: Tokenizers, data_path: Path):
-    """Serving a torch model requires saving the tokenizer, and
-    it needs to be in the path that the model archive is built.
-
-    Args:
-        tokenizer (Tokenizers): The BERT or RoBERTa tokenizer used
-        data_path (Path): The location for building the model archive
-    """
-    serve_path = data_path.joinpath("serve")
-    tokenizer.save_pretrained(serve_path)
+def update_tokenizer_path(serve_path):
     configpath = Path(serve_path).joinpath("tokenizer_config.json")
     newtokenizer = "./tokenizer.json"
     with open(configpath) as f:
@@ -130,34 +150,17 @@ def save_tokenizer(tokenizer: Tokenizers, data_path: Path):
     io.json_write(serve_path, configpath, tconfig)
 
 
-def save_bert_model(
-    model: PreTrainedModel,
-    args: Namespace,
-    best_epoch: int,
-    serve_path: Optional[Path] = None,
-):
-    """Serving a torch model requires saving the model, and
+def save_tokenizer(tokenizer: Tokenizers, serve_path: Path):
+    """Serving a torch model requires saving the tokenizer, and
     it needs to be in the path that the model archive is built.
 
     Args:
-        model (PreTrainedModel): The BERT or RoBERTa model (for this
-        purpose post-training)
-        args (Namespace): The list of arguments for building paths
-        best_epoch (int): The epoch from which to pull the state_dict
-        serve_path (Path, optional): Directory to store files for building
-        the model archive. Defaults to None.
+        tokenizer (Tokenizers): The BERT or RoBERTa tokenizer used
+        serve_path (Path): The location for building the model archive
     """
-    if isinstance(model, DDP):
-        model = model.module
-    if serve_path is None:
-        serve_path = io.id_str("", args).parent
-    state_dict = io.load_torch_object("state_dict", args, best_epoch)
-    if "module.classifier.bias" in state_dict:
-        logger.info("Removing distribution from model")
-        state_dict = ddp.consume_prefix_in_state_dict_if_present(
-            state_dict, "module."
-        )
-    model.save_pretrained(save_directory=serve_path, state_dict=state_dict)
+    tokenizer.save_pretrained(serve_path)
+    if not isinstance(tokenizer, MarianTokenizer):
+        update_tokenizer_path(serve_path)
 
 
 def get_encodings(
@@ -165,6 +168,7 @@ def get_encodings(
     idx: int,
     bert_type: Optional[str] = "bert",
     tokenizer: Optional[PreTrainedTokenizer] = None,
+    kwargs: Optional[dict] = {},
 ) -> List[BatchEncoding]:
     """Get BERT or RoBERTa encodings for a list of np.ndarrays for training,
     testing (and validation).
@@ -176,11 +180,14 @@ def get_encodings(
         bert_type (str, optional): The type of bert model to be used. Defaults
         to "bert".
         tokenizer (PreTrainedTokenizer, optional): The tokenizer to use
+        kwargs (dict, optional): For overriding BATCH_ENCODE_KWARGS
 
     Returns:
         List[BatchEncoding]: A list of training, test (and validation)
         encodings of text.
     """
+    BATCH_ENCODE_KWARGS.update(kwargs)
+    logger.info(f"kwargs are now: {BATCH_ENCODE_KWARGS['return_tensors']}")
     if tokenizer is None:
         tokenizer = get_tokenizer(bert_type)
     encode_list = [
@@ -191,33 +198,79 @@ def get_encodings(
 
 
 def get_pretrained_model(
-    labels: Tensor, bert_type: Optional[str] = "bert"
+    model_type: Optional[str] = "bert",
+    labels: Optional[Tensor] = None,
+    kwargs: Optional[dict] = {},
 ) -> Models:
     """Get a pretrained model from transformers.
 
     Args:
-        labels (Tensor): A tensor of the labels in the dataset. This will
+        labels (Tensor, optional): A tensor of the labels in the dataset. This will
         affect the size of the network final layer
-        bert_type (str, optional): The type of the model to be used ("bert" or
-        "roberta"). Defaults to "bert".
+        model_type (str, optional): The type of the model to be used ("bert",
+        "roberta", or "marianmt"). Defaults to "bert".
 
     Returns:
         Models: The pretrained model to be used in training.
     """
-    num_lbls = len(np.unique(labels))
-    bert_dict = BERT_MODELS[bert_type]
+    if labels is not None:
+        num_lbls = len(np.unique(labels))
+    model_dict = HUGGING_MODELS[model_type]
+    model_name = model_dict["model-name"]
+    if model_type in ["bert", "roberta"]:
+        kwargs = {
+            "num_labels": num_lbls,
+            "output_attentions": False,
+            "output_hidden_states": False,
+        }
+    else:
+        if isinstance(model_name, partial):
+            model_name = model_name(**kwargs)
+            kwargs = {}
     tlog.set_verbosity_error()
     for i in range(0, 3):
         while True:
             try:
-                model = bert_dict["model"].from_pretrained(
-                    bert_dict["model-type"],
-                    num_labels=num_lbls,
-                    output_attentions=False,
-                    output_hidden_states=False,
+                model = model_dict["model-head"].from_pretrained(
+                    model_name,
+                    **kwargs
                 )
             except ValueError:
                 logger.info("Connection error, trying again")
                 continue
             break
     return model
+
+
+def save_pretrained_model(
+    model: PreTrainedModel,
+    args: Optional[Namespace] = None,
+    best_epoch: Optional[int] = None,
+    serve_path: Optional[Path] = None,
+    state_dict: Optional[OrderedDict] = None
+):
+    """Serving a torch model requires saving the model, and
+    it needs to be in the path that the model archive is built.
+
+    Args:
+        model (PreTrainedModel): The BERT or RoBERTa model (for this
+        purpose post-training)
+        args (Namespace): The list of arguments for building paths
+        best_epoch (int): The epoch from which to pull the state_dict
+        serve_path (Path, optional): Directory to store files for building
+        the model archive. Defaults to None.
+        state_dict (OrderedDict, optional) Model state dictionary. Could be
+        model.state_dict() if using default
+    """
+    if isinstance(model, DDP):
+        model = model.module
+    if serve_path is None:
+        serve_path = io.id_str("", args).parent
+    if state_dict is None:
+        state_dict = io.load_torch_object("state_dict", args, best_epoch)
+    if "module.classifier.bias" in state_dict:
+        logger.info("Removing distribution from model")
+        state_dict = ddp.consume_prefix_in_state_dict_if_present(
+            state_dict, "module."
+        )
+    model.save_pretrained(save_directory=serve_path, state_dict=state_dict)

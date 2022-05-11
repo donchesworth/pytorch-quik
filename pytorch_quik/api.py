@@ -3,7 +3,7 @@ import multiprocessing as mp
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 from requests import Session
-from typing import List, OrderedDict
+from typing import List, OrderedDict, Optional
 from multiprocessing.connection import Connection
 import pandas as pd
 import numpy as np
@@ -16,42 +16,8 @@ logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-URL = "http://deepshadow.gsslab.rdu2.redhat.com:8080/predictions/my_tc"
 JSON_HEADER = {"Content-Type": "application/json"}
-
-
-def requests_session() -> Session:
-    """Create an API session that can queue and recieve multiple
-    requests. It can also retry when a request returns a 507 instead
-    of a 200.
-
-    Returns:
-        Session: A requests session
-    """
-    retry_strategy = Retry(
-        total=10,
-        backoff_factor=1,
-        status_forcelist=[507],
-        method_whitelist=["POST"],
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    sesh = Session()
-    sesh.mount("http://", adapter)
-    return sesh
-
-
-def request_post(data_batch: str, sesh: Session, conn: Connection, num: int):
-    """send a POST request based on a requests_session and a connection
-
-    Args:
-        data_batch (str): A batch of data to be predicted
-        sesh (Session): A session from requests_session
-        conn (Connection): The input_pipe from mp.Pipe
-        num (int): the batch number for when the data is recombined.
-    """
-    r = sesh.post(URL, data=bytes(data_batch, "utf-8"), headers=JSON_HEADER)
-    logger.info(f"Batch {num}, status_code: {r.status_code}")
-    conn.send(r)
+#  sample_text = '{"instances":[{"data": "me encanta Red Hat"}]}'
 
 
 def split_and_format(arr: np.array, length: int) -> List[str]:
@@ -71,36 +37,91 @@ def split_and_format(arr: np.array, length: int) -> List[str]:
     return data_list
 
 
-def batch_inference(
-    responses: np.array, indexed_labels: OrderedDict, batch_size: int
-) -> pd.DataFrame:
-    """Take an array of text fields, and return predictions via API
+def request_post(
+    url: str, data_batch: str, sesh: Session, conn: Connection, num: int
+):
+    """send a POST request based on a requests_session and a connection
 
     Args:
-        responses (np.array): The set of text (or survey responses) to
-        be predicted
-        indexed_labels (OrderedDict): An ordered dict of labels, for instance
-        0: Negative, 1: Positive
-        batch_size (int): The size of each batch request
-
-    Returns:
-        pd.DataFrame: A dataframe with the original text, logits, and
-        predicted label.
+        data_batch (str): A batch of data to be predicted
+        sesh (Session): A session from requests_session
+        conn (Connection): The input_pipe from mp.Pipe
+        num (int): the batch number for when the data is recombined.
     """
-    data_list = split_and_format(responses, batch_size)
-    processes = []
-    r_list = []
-    sesh = requests_session()
-    for num, batch in enumerate(data_list):
-        output_pipe, input_pipe = mp.Pipe(duplex=False)
-        proc = mp.Process(
-            target=request_post, args=(batch, sesh, input_pipe, num)
+    r = sesh.post(url, data=bytes(data_batch, "utf-8"), headers=JSON_HEADER)
+    logger.info(f"Batch {num}, status_code: {r.status_code}")
+    conn.send(r)
+
+
+class ServeRequest:
+    """A class for sending the request and receiving the response from
+    the torch serve service API"""
+
+    def __init__(
+        self,
+        text: np.array,
+        batch_size: int,
+        url: str,
+    ):
+        """The ServeRequest constructor
+
+        Args:
+            text (np.array): The set of text (or survey responses) to
+            be predicted
+            batch_size (int): The size of each batch request
+            url (str): the url endpoint of the api
+
+        """
+        self.url = url
+        self.data_list = split_and_format(text, batch_size)
+        self.sesh = self.requests_session()
+
+    def requests_session(self) -> Session:
+        """Create an API session that can queue and recieve multiple
+        requests. It can also retry when a request returns a 507 instead
+        of a 200.
+
+        Returns:
+            Session: A requests session
+        """
+        retry_strategy = Retry(
+            total=10,
+            backoff_factor=1,
+            status_forcelist=[507, 500],
+            method_whitelist=["POST"],
         )
-        processes.append(proc)
-        r_list.append(output_pipe)
-        proc.start()
-    [proc.join() for proc in processes]
-    r_list = [
-        json_normalize(r.recv().json()["predictions"], sep="_") for r in r_list
-    ]
-    return pd.concat(r_list, ignore_index=True)
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        sesh = Session()
+        sesh.mount("http://", adapter)
+        return sesh
+
+    def batch_inference(self) -> pd.DataFrame:
+        """Take an array of text fields, and return predictions via API
+
+        Returns:
+            pd.DataFrame: A dataframe with the original text, logits, and
+            predicted label.
+        """
+        processes = []
+        r_list = []
+        preds = []
+        for num, batch in enumerate(self.data_list):
+            output_pipe, input_pipe = mp.Pipe(duplex=False)
+            proc = mp.Process(
+                target=request_post,
+                args=(self.url, batch, self.sesh, input_pipe, num),
+            )
+            processes.append(proc)
+            r_list.append(output_pipe)
+            proc.start()
+        [proc.join() for proc in processes]
+        for r in r_list:
+            pred = r.recv().json()["predictions"]
+            if isinstance(pred, list):
+                preds.extend(pred[0])
+            else:
+                preds.append(json_normalize(r, sep="_"))
+        if isinstance(preds, list):
+            return pd.DataFrame(preds, columns=["translation"])
+        else:
+            return pd.concat(preds, ignore_index=True)

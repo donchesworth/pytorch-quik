@@ -177,6 +177,24 @@ def load_test_array(args: Namespace) -> Tuple[np.array, np.array]:
     return Xte, yte
 
 
+def serve_str(
+    base_path: Optional[Path] = None,
+    model_name: Optional[str] = None
+):
+    jpath = ["serve"]
+    if model_name:
+        jpath.insert(0, model_name)
+    if base_path:
+        p = Path(base_path)
+    else:
+        p = Path.cwd()
+    p = p.joinpath(*jpath)
+    t = p.parent.joinpath("tmp")
+    p.mkdir(parents = True, exist_ok = True)
+    t.mkdir(exist_ok = True)
+    return p, t
+
+
 def json_write(serve_path: Path, filename: str, data: str):
     """Simple function to write json output to the appropriate
     directory and filename.
@@ -188,4 +206,5 @@ def json_write(serve_path: Path, filename: str, data: str):
     """
     file = Path.joinpath(serve_path, filename)
     with open(file, "w") as outfile:
-        json.dump(data, outfile)
+        json.dump(data, outfile, indent=2)
+        outfile.write("\n")
