@@ -3,11 +3,10 @@ from importlib import import_module
 __all__ = [
     "api",
     "arg",
-    "io",
     "ddp",
     "dummy",
+    "io",
     "metrics",
-    "serve",
     "tensor",
     "transform",
     "travel",
